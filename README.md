@@ -1,6 +1,7 @@
 # Die Einhorn-Rettung
 
-Local German-language party guide following the final storyline in `story.md`. Vanilla HTML/CSS/JavaScript; no build step,
+Local German-language party guide following the functionality in `scope.md`, the final storyline in `story.md`,
+and the approved storybook interface in `ui_design.md`. Vanilla HTML/CSS/JavaScript; no build step,
 backend, accounts, external fonts, APIs, or runtime dependencies.
 
 ## Run
@@ -22,7 +23,7 @@ The computer must stay on. The TV simply mirrors the organizer's device.
 1. Fill any of the 12 slots, choose icons, and adjust teams. Empty places are fine.
 2. Reveal the teams and play the birthday intro (about 74 seconds of content,
    ending at the rescue invitation). The warm-up shows one team at a time. Each team
-   completes its three illustrated poses and takes one device photo after every pose.
+   completes its three illustrated poses and marks each one **Fertig**.
 3. Run the 5-mat challenge. Every completed team gets a Mut reward moment.
    The last team's moment also celebrates MUT IST ZURÜCK.
 4. Show the storm transition and run the 4-mat challenge for Zusammenhalt.
@@ -53,6 +54,7 @@ The intro waits for the organizer at its final invitation. Navigation stays usab
 - `game.js`: state validation and progression.
 - `app.js`: rendering, events, scene scheduling and persistence.
 - `styles.css`: responsive design, supplied team-character crops, the CSS unicorn and lightweight motion.
+- `ui_design.md`: approved visual and interaction direction.
 - `tests/game.test.cjs`: dependency-free state and simulated UI-flow tests.
 
 ## Persistence and limits
@@ -64,11 +66,9 @@ Refreshing restarts an active animation from its first scene, preserving progres
 Existing version-1 saves migrate automatically, preserving names and progress.
 There is no device sync.
 
-Camera behavior depends on the device/browser: each of the nine pose buttons may
-open a camera or file picker. The app does not store/upload photos and cannot force
-saving to the photo library. Save/retain images through the camera or photo app.
-Canceling selection never blocks gameplay. Individual pose checks live only for the
-open session; finishing all three poses records team readiness in the existing state.
+The MVP does not open a camera, upload files, or store photos. Individual pose checks
+live only for the open session; finishing all three poses records team readiness in
+the existing state.
 
 No service worker/PWA cache: reopening or refreshing needs access to the local
 files or static server. Audio is omitted. No GPS, digital puzzle, or extra lore.

@@ -5,7 +5,7 @@ const C = window.CONTENT, G = window.Game, U = C.ui;
 const app = document.querySelector('#app'), dialog = document.querySelector('#organizer');
 const STORAGE_KEY = 'unicorn-rescue-v1';
 let state = G.fresh(), storageError = '', presentation = false, scene = 0, timer = null, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0;
-const warmupPhotos = Object.fromEntries(C.teams.map(t=>[t.id,[false,false,false]]));
+const warmupPoses = Object.fromEntries(C.teams.map(t=>[t.id,[false,false,false]]));
 const sequence = ['home','setup','reveal','intro','warmup','level1','transition2','level2','transition3','level3','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const fmt = (text, args) => text.replace(/\{(\w+)\}/g, (_,key) => args[key] ?? '');
@@ -30,11 +30,17 @@ function powers(id, labels=false) {
     return '<span class="power '+(earned?'earned':'missing')+(lastAward?.id===id && lastAward?.level===i?' awarding':'')+'" aria-label="'+esc(p.name+(id?' · '+(earned?U.completed:U.pending):''))+'"><span aria-hidden="true">'+p.icon+'</span>'+(labels?'<small>'+esc(p.name)+'</small>':'')+'</span>';
   }).join('')+'</div>';
 }
+function journeyPowers() {
+  return '<div class="journey-powers" aria-label="'+esc(U.magicProgress)+'">'+C.powers.map((p,i)=>{
+    const restored=G.allComplete(state,i)&&(i!==2||state.clueRevealed);
+    return '<span class="'+(restored?'restored':'waiting')+'"><b aria-hidden="true">'+p.icon+'</b>'+esc(p.name)+'</span>';
+  }).join('')+'</div>';
+}
 function heading(title, text='', eyebrow='') { return '<div class="page-heading">'+(eyebrow?'<p class="eyebrow">'+esc(eyebrow)+'</p>':'')+'<h1>'+esc(title)+'</h1>'+(text?'<p class="lead">'+esc(text)+'</p>':'')+'</div>'; }
 function note(text) { document.querySelector('#notice').textContent = text; }
 function save() { try { localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); storageError=''; } catch { storageError=U.saveFailed; note(storageError); } }
 try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) state=G.normalize(JSON.parse(saved)); } catch { storageError=U.corruptSave; }
-C.teams.forEach(t=>{ if(state.teams[t.id].gesture!==null) warmupPhotos[t.id].fill(true); });
+C.teams.forEach(t=>{ if(state.teams[t.id].gesture!==null) warmupPoses[t.id].fill(true); });
 document.title = C.app.title;
 function cancelTimer() { clearTimeout(timer); timer=null; }
 function go(screen) {
@@ -44,7 +50,7 @@ function go(screen) {
   cancelTimer(); scene=0; rewardShown=false;
   if(screen==='warmup') {
     const firstOpen=C.teams.findIndex(t=>state.teams[t.id].gesture===null);
-    warmupTeam=firstOpen<0?0:firstOpen;
+    warmupTeam=firstOpen<0?C.teams.length-1:firstOpen;
   }
   state.currentScreen=screen; save();
   if (dialog.open) dialog.close();
@@ -70,24 +76,27 @@ function teamCard(t, body, cls='') {
 }
 function home() {
   const h=C.home;
-  return '<section class="home-hero"><div class="hero-copy"><p class="eyebrow">'+esc(h.tag)+'</p><h1>'+esc(h.title).replace('\n','<br>')+'</h1><p class="lead">'+esc(h.text)+'</p><div class="actions">'+nav(U.setup,'setup')+(state.children.some(c=>c.name.trim())?button(U.resume,'resume','','secondary'):'')+'</div><div class="stats">'+h.stats.map(x=>'<span>'+esc(x)+'</span>').join('')+'</div></div><div class="hero-art"><div class="rainbow"></div><div class="cloud c1"></div><div class="cloud c2"></div>'+mascot('unicorn','hero-unicorn')+'<span class="floating-star">✦</span><div class="mission"><p class="eyebrow">'+esc(h.mission)+'</p>'+powers(null,true)+'</div></div></section><section class="team-grid home-teams">'+C.teams.map(t=>teamCard(t,'<p>'+esc(fmt(U.childrenCount,{n:children(t.id).length}))+'</p>')).join('')+'</section>';
+  const hasChildren=state.children.some(c=>c.name.trim());
+  return '<section class="home-hero"><div class="hero-copy"><p class="eyebrow">'+esc(h.tag)+'</p><h1>'+esc(h.title).replace('\n','<br>')+'</h1><p class="lead">'+esc(h.text)+'</p><div class="actions">'+(hasChildren?button(U.resume,'resume')+nav(U.preparation,'setup','quiet'):nav(U.startSetup,'setup'))+'</div></div><div class="hero-art"><div class="rainbow"></div><div class="cloud c1"></div><div class="cloud c2"></div><div class="birthday-balloons" aria-hidden="true"><i></i><i></i></div>'+mascot('unicorn','hero-unicorn')+'<span class="floating-star">✦</span><div class="mission"><p class="eyebrow">'+esc(h.mission)+'</p>'+powers(null,true)+'</div></div></section><section class="team-preview"><p class="eyebrow">'+esc(U.rescueTeams)+'</p><div class="team-grid home-teams">'+C.teams.map(t=>teamCard(t,'<p>'+esc(fmt(U.childrenCount,{n:children(t.id).length}))+'</p>')).join('')+'</div></section>';
 }
 function setup() {
-  return heading(C.setup.title,C.setup.text)+ '<p class="helper">'+esc(C.setup.help)+'</p><div class="setup-grid">'+state.children.map((c,i)=>'<article class="child-slot '+c.teamId+'"><div class="slot-heading"><span>'+esc(fmt(U.slot,{n:i+1}))+'</span><span aria-hidden="true">'+icon(c.icon)+'</span></div><label>'+esc(U.name)+'<input data-child="'+i+'" data-field="name" value="'+esc(c.name)+'" placeholder="'+esc(U.empty)+'" maxlength="40" autocomplete="off"></label><div class="field-pair"><label>'+esc(U.icon)+'<select data-child="'+i+'" data-field="icon">'+C.icons.map(x=>'<option value="'+x[0]+'"'+(x[0]===c.icon?' selected':'')+'>'+x[1]+' '+esc(x[2])+'</option>').join('')+'</select></label><label>'+esc(U.team)+'<select data-child="'+i+'" data-field="teamId">'+C.teams.map(t=>'<option value="'+t.id+'"'+(t.id===c.teamId?' selected':'')+'>'+esc(t.short)+'</option>').join('')+'</select></label></div></article>').join('')+'</div><div class="actions">'+nav(U.begin,'reveal')+'</div>';
+  const childSlot=(c,i)=>'<article class="child-slot '+c.teamId+'"><div class="slot-heading"><span>'+esc(fmt(U.slot,{n:i+1}))+'</span><span aria-hidden="true">'+icon(c.icon)+'</span></div><label>'+esc(U.name)+'<input data-child="'+i+'" data-field="name" value="'+esc(c.name)+'" placeholder="'+esc(U.empty)+'" maxlength="40" autocomplete="off"></label><div class="field-pair"><label>'+esc(U.icon)+'<select data-child="'+i+'" data-field="icon">'+C.icons.map(x=>'<option value="'+x[0]+'"'+(x[0]===c.icon?' selected':'')+'>'+x[1]+' '+esc(x[2])+'</option>').join('')+'</select></label><label>'+esc(U.team)+'<select data-child="'+i+'" data-field="teamId">'+C.teams.map(t=>'<option value="'+t.id+'"'+(t.id===c.teamId?' selected':'')+'>'+esc(t.short)+'</option>').join('')+'</select></label></div></article>';
+  const groups=C.teams.map(t=>'<section class="setup-team '+t.id+'"><div class="setup-team-heading">'+mascot(t.id)+'<div><p class="eyebrow">'+esc(U.rescueTeam)+'</p><h2>'+esc(t.name)+'</h2></div></div><div class="setup-team-slots">'+state.children.map((c,i)=>c.teamId===t.id?childSlot(c,i):'').join('')+'</div></section>').join('');
+  return '<section class="setup-page">'+heading(C.setup.title,C.setup.text)+'<p class="helper">'+esc(C.setup.help)+'</p><div class="setup-teams">'+groups+'</div><div class="actions">'+nav(U.begin,'reveal')+'</div></section>';
 }
 function reveal() {
   return heading(C.reveal.title,C.reveal.text)+'<div class="team-grid reveal">'+C.teams.map(t=>teamCard(t,roster(t))).join('')+'</div><div class="actions">'+nav(U.next,'intro')+'</div>';
 }
 function warmup() {
-  const t=C.teams[warmupTeam]||C.teams[0], checks=warmupPhotos[t.id], teamDone=checks.every(Boolean);
-  const teamHeader=teamCard(t,'<p class="warmup-counter">'+esc(fmt(U.teamOf,{n:warmupTeam+1}))+'</p>','warmup-team-card');
-  const poses=t.gestures.map((label,i)=>'<article class="pose-card '+(checks[i]?'pose-complete':'')+'"><div class="pose-image-wrap"><img src="'+esc(t.poseImages[i])+'" alt="'+esc(label)+'" loading="eager">'+(checks[i]?'<span class="pose-check" aria-label="'+esc(U.completed)+'">✓</span>':'')+'</div><h3>'+esc(label)+'</h3><label class="primary photo-button pose-photo-button">'+esc(U.photo)+'<input type="file" accept="image/*" capture="environment" data-photo="'+t.id+'" data-pose="'+i+'"></label></article>').join('');
+  const t=C.teams[warmupTeam]||C.teams[0], checks=warmupPoses[t.id], teamDone=checks.every(Boolean), doneCount=checks.filter(Boolean).length;
+  const teamHeader=teamCard(t,'<p class="warmup-counter">'+esc(fmt(U.teamOf,{n:warmupTeam+1}))+' · '+esc(fmt(U.poseProgress,{n:doneCount}))+'</p>','warmup-team-card');
+  const poses=t.gestures.map((label,i)=>'<article class="pose-card '+(checks[i]?'pose-complete':'')+'"><div class="pose-image-wrap"><img src="'+esc(t.poseImages[i])+'" alt="'+esc(label)+'" loading="eager">'+(checks[i]?'<span class="pose-check" aria-label="'+esc(U.completed)+'">✓</span>':'')+'</div><h3>'+esc(label)+'</h3>'+button(checks[i]?U.finished:U.finishPose,'poseDone','data-team="'+t.id+'" data-pose="'+i+'" aria-pressed="'+checks[i]+'"'+(checks[i]?' disabled':''),checks[i]?'pose-finish completed':'pose-finish')+'</article>').join('');
   const allDone=C.teams.every(team=>state.teams[team.id].gesture!==null);
-  return '<section class="warmup-session '+t.id+'">'+heading(C.warmup.title,C.warmup.text)+'<div class="warmup-progress" aria-label="'+esc(U.warmupProgress)+'">'+C.teams.map((team,i)=>'<span class="'+(state.teams[team.id].gesture!==null?'done':'')+(i===warmupTeam?' active':'')+'" aria-hidden="true"></span>').join('')+'</div>'+teamHeader+'<div class="pose-grid">'+poses+'</div>'+(teamDone?'<p class="team-spell-done">✓ '+esc(U.teamSpellDone)+'</p>':'')+'<p class="helper">'+esc(U.photoHint)+'</p><div class="actions">'+(warmupTeam>0?button(U.previousTeam,'warmupTeam','data-index="'+(warmupTeam-1)+'"','secondary'):'')+(teamDone&&warmupTeam<2?button(U.nextTeam,'warmupTeam','data-index="'+(warmupTeam+1)+'"'):'')+(allDone?nav(U.next,'level1'):'')+'</div></section>';
+  return '<section class="warmup-session '+t.id+'">'+heading(C.warmup.title,C.warmup.text)+'<div class="warmup-progress" aria-label="'+esc(U.warmupProgress)+'">'+C.teams.map((team,i)=>'<span class="'+(state.teams[team.id].gesture!==null?'done':'')+(i===warmupTeam?' active':'')+'" aria-hidden="true"></span>').join('')+'</div>'+teamHeader+'<div class="pose-grid">'+poses+'</div>'+(teamDone?'<p class="team-spell-done">✓ '+esc(U.teamSpellDone)+'</p>':'')+'<p class="helper">'+esc(U.poseHint)+'</p><div class="actions">'+(warmupTeam>0?button(U.previousTeam,'warmupTeam','data-index="'+(warmupTeam-1)+'"','secondary'):'')+(teamDone&&warmupTeam<2?button(U.nextTeam,'warmupTeam','data-index="'+(warmupTeam+1)+'"'):'')+(allDone?nav(U.next,'level1'):'')+'</div></section>';
 }
 function level(index) {
   const l=C.levels[index];
-  return '<section class="outdoor-level">'+heading(l.title,'',fmt(U.levelLabel,{n:index+1})+' · '+U.outdoor)+'<section class="rule-card"><div><h2>'+esc(l.subtitle)+'</h2><ul class="rules">'+l.rules.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ul></div>'+(l.mats?'<div class="mat-illustration" aria-hidden="true">'+Array.from({length:5},(_,i)=>'<span class="mat '+(i>=l.mats?'blown':'')+'">'+(i+1)+'</span>').join('')+'</div>':'<div class="search-symbol" aria-hidden="true">✧ ? ✧</div>')+'</section><p class="helper organizer-only">'+esc(l.organizer)+'</p><div class="team-grid compact">'+C.teams.map(t=>{
+  return '<section class="outdoor-level">'+heading(l.title,'',fmt(U.levelLabel,{n:index+1})+' · '+U.outdoor)+journeyPowers()+'<section class="rule-card"><div><h2>'+esc(l.subtitle)+'</h2><ul class="rules">'+l.rules.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ul></div>'+(l.mats?'<div class="mat-illustration" aria-hidden="true">'+Array.from({length:5},(_,i)=>'<span class="mat '+(i>=l.mats?'blown':'')+'">'+(i+1)+'</span>').join('')+'</div>':'<div class="search-symbol" aria-hidden="true">✧ ? ✧</div>')+'</section><p class="helper organizer-only">'+esc(l.organizer)+'</p><div class="team-grid compact">'+C.teams.map(t=>{
     const done=state.teams[t.id].completedLevels[index];
     return teamCard(t,(index===2?'<p>'+esc(U.missingPart)+'</p><div class="word-slots" aria-label="'+esc(fmt(U.wordSlots,{n:t.word.length}))+'">'+Array.from(t.word,()=>'<span aria-hidden="true"></span>').join('')+'</div>':'')+powers(t.id)+'<p class="team-status">'+esc(done?(index===2?U.wordsReturned:fmt(U.powerRestored,{power:C.powers[index].name})):U.pending)+'</p><div class="organizer-only">'+button(done?U.undo:index===2?U.wordFound:U.complete,'mark','data-team="'+t.id+'" data-level="'+index+'"',done?'quiet':'primary')+'</div>',done?'complete':'');
   }).join('')+'</div><div class="actions">'+nav(index===2?U.revealDestination:U.next,index===2?'destination':'transition'+(index+2),'primary',!G.allComplete(state,index))+'</div>'+(!G.allComplete(state,index)?'<p class="helper">'+esc(U.waitTeams)+'</p>':'')+'</section>';
@@ -209,9 +218,17 @@ document.addEventListener('click', event=>{
     case 'organizer': openOrganizer(); break;
     case 'close': dialog.close(); break;
     case 'reset': openOrganizer(true); break;
-    case 'resetConfirm': state=G.fresh(); C.teams.forEach(t=>warmupPhotos[t.id].fill(false)); warmupTeam=0; returnScreen='home'; presentation=false; go('home'); note(U.resetDone); break;
+    case 'resetConfirm': state=G.fresh(); C.teams.forEach(t=>warmupPoses[t.id].fill(false)); warmupTeam=0; returnScreen='home'; presentation=false; go('home'); note(U.resetDone); break;
     case 'gesture': state.teams[el.dataset.team].gesture=Number(el.dataset.index); save(); render(); break;
     case 'warmupTeam': warmupTeam=Math.max(0,Math.min(2,Number(el.dataset.index))); render(); break;
+    case 'poseDone': {
+      const id=el.dataset.team, pose=Number(el.dataset.pose);
+      if(!warmupPoses[id] || !Number.isInteger(pose) || pose<0 || pose>2 || warmupPoses[id][pose]) break;
+      warmupPoses[id][pose]=true;
+      if(warmupPoses[id].every(Boolean)) {state.teams[id].gesture=0;save();}
+      render();
+      break;
+    }
     case 'mark': {
       const id=el.dataset.team, n=Number(el.dataset.level), was=state.teams[id].completedLevels[n];
       if(!G.mark(state,id,n,!was)) {note(U.locked);break;}
@@ -236,22 +253,14 @@ document.addEventListener('change',event=>{
   const el=event.target;
   if(el.dataset.child!==undefined) {
     const c=state.children[Number(el.dataset.child)]; c[el.dataset.field]=el.value; save();
-    if(el.dataset.field!=='name') {
+    if(el.dataset.field==='teamId') { render(); }
+    else if(el.dataset.field!=='name') {
       const card=el.closest('.child-slot'); card.className='child-slot '+c.teamId;
       card.querySelector('.slot-heading span:last-child').textContent=icon(c.icon);
     }
   }
   if(el.dataset.markTeam) {
     G.mark(state,el.dataset.markTeam,Number(el.dataset.markLevel),el.checked); save(); render(); openOrganizer();
-  }
-  if(el.dataset.photo) {
-    const hasPhoto=!!el.files?.length, pose=Number(el.dataset.pose), id=el.dataset.photo;
-    el.value='';
-    if(hasPhoto && warmupPhotos[id] && Number.isInteger(pose) && pose>=0 && pose<3) {
-      warmupPhotos[id][pose]=true;
-      if(warmupPhotos[id].every(Boolean)) state.teams[id].gesture=0;
-      save(); render(); note(U.photoSelected);
-    } else if(hasPhoto) note(U.photoSelected);
   }
 });
 dialog.addEventListener('close',()=>scheduleScene());

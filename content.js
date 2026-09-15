@@ -209,7 +209,10 @@ window.CONTENT = {
     "presentation": "Präsentationsmodus",
     "exitPresentation": "Präsentationsmodus verlassen",
     "progress": "Unsere Zauberkraft",
+    "magicProgress": "Gefundene Zauberkräfte",
     "setup": "Kinder & Teams vorbereiten",
+    "startSetup": "ABENTEUER STARTEN",
+    "preparation": "⚙ Vorbereitung",
     "resume": "Abenteuer fortsetzen",
     "begin": "Teams zeigen",
     "startAdventure": "RETTEN WIR DAS EINHORN!",
@@ -249,17 +252,17 @@ window.CONTENT = {
     "saved": "Automatisch gespeichert",
     "saveFailed": "Speichern ist gerade nicht möglich. Bitte diese Seite geöffnet lassen.",
     "corruptSave": "Der gespeicherte Spielstand konnte nicht gelesen werden. Bitte prüfe die Teams.",
-    "selected": "Gewählt",
-    "selectGesture": "Macht alle drei Posen.",
-    "countdown": "3 – 2 – 1 – TEAMFOTO!",
-    "photo": "Foto machen",
-    "photoHint": "Die Fotos bleiben auf dem Gerät und werden nicht in der App gespeichert.",
-    "photoSelected": "Foto geschafft!",
+    "finishPose": "Fertig",
+    "finished": "✓ Fertig",
+    "poseProgress": "{n} / 3 Posen",
+    "poseHint": "Macht die Pose gemeinsam. Danach tippt die Spielleitung auf Fertig.",
     "teamOf": "Team {n} von 3",
     "previousTeam": "Vorheriges Team",
     "nextTeam": "Nächstes Team",
     "teamSpellDone": "Team-Zauber geschafft!",
-    "warmupProgress": "Fortschritt der drei Fototeams",
+    "warmupProgress": "Fortschritt der drei Rettungsteams",
+    "rescueTeam": "RETTUNGSTEAM",
+    "rescueTeams": "UNSERE RETTUNGSTEAMS",
     "rewardUnlocked": "{team} haben etwas freigeschaltet!",
     "rewardCounter": "GEHEIME BELOHNUNG {n} / 3",
     "levelLabel": "LEVEL {n} / 3",
@@ -279,8 +282,6 @@ window.CONTENT = {
     "progressHint": "Jeder Schritt bringt die Magie zurück.",
     "rewardLocked": "Die Belohnungen warten, bis das Einhorn gefunden wurde.",
     "resetDone": "Das Spiel wurde zurückgesetzt.",
-    "teamSpell": "Zeigt euren Team-Zauber!",
-    "teamsReady": "Perfekt! Die Rettungsteams sind bereit.",
     "connectWords": "ZAUBERWÖRTER VERBINDEN",
     "toCourtyard": "Zum Schulhof · Schatzsuche starten",
     "treasureFound": "SCHATZ GEFUNDEN!",
@@ -296,17 +297,10 @@ window.CONTENT = {
   },
   "home": {
     "tag": "LUCYS 6. GEBURTSTAG",
-    "title": "Kleine Teams.\nGroße Magie.",
-    "text": "Das Geburtstags-Einhorn ist verschwunden! Findet seine drei Zauberkräfte und rettet gemeinsam die Feier.",
+    "title": "Ein magisches Abenteuer beginnt …",
+    "text": "Heute braucht das Geburtstags-Einhorn eure Hilfe.",
     "mission": "EURE MISSION",
-    "missionText": "Bringt Mut, Zusammenhalt und Klugheit zurück.",
-    "stats": [
-      "3 Rettungsteams",
-      "3 Abenteuer",
-      "1 Einhorn"
-    ],
-    "prepare": "Vor der Party",
-    "prepareText": "Namen eintragen, Symbole wählen und Teams zusammenstellen."
+    "missionText": "Bringt Mut, Zusammenhalt und Klugheit zurück."
   },
   "setup": {
     "title": "Wer rettet das Einhorn?",
@@ -319,7 +313,7 @@ window.CONTENT = {
   },
   "warmup": {
     "title": "Jedes Rettungsteam braucht einen Team-Zauber!",
-    "text": "Macht nacheinander alle drei Posen. Nach jeder Pose kommt ein Teamfoto!"
+    "text": "Macht gemeinsam alle drei Posen."
   },
   "intro": [
     {

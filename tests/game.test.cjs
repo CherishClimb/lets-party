@@ -78,6 +78,16 @@ test('stored data is normalized and invalid screens cannot bypass gates',()=>{
   assert.equal(s.teams.monster.gesture,null);assert.deepEqual(s.teams.monster.completedLevels,[false,true,false]);
   assert.throws(()=>G.normalize({}));
 });
+test('home and setup follow the storybook team layout without changing the 12 slots',()=>{
+  const h=harness();
+  assert.match(h.html(),/LUCYS 6\. GEBURTSTAG/);
+  assert.match(h.html(),/Ein magisches Abenteuer beginnt/);
+  assert.doesNotMatch(h.html(),/3 Rettungsteams|3 Abenteuer|1 Einhorn/);
+  h.click('go',{screen:'setup'});
+  assert.equal((h.html().match(/class="setup-team /g)||[]).length,3);
+  assert.equal((h.html().match(/data-field="name"/g)||[]).length,12);
+  assert.match(h.html(),/Die kleinen Monster/);assert.match(h.html(),/Die kleinen Oktopusse/);assert.match(h.html(),/Die kleinen Krokodile/);
+});
 test('full birthday adventure: powers, schoolyard treasure, return, balloon, snacks and birthday image',()=>{
   const h=harness();fill(h);h.click('go',{screen:'reveal'});
   assert.match(h.html(),/Emma/);assert.match(h.html(),/Noah/);assert.match(h.html(),/Mia/);
@@ -87,8 +97,11 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   for(let i=0;i<5;i++) h.tick();
   assert.match(h.html(),/RETTEN WIR DAS EINHORN!/);assert.match(h.html(),/Emma/);
   h.click('sceneNext');
-  for(const id of G.teamIds) h.click('gesture',{team:id,index:'1'});
-  assert.match(h.html(),/capture="environment"/);
+  G.teamIds.forEach((id,teamIndex)=>{
+    for(let pose=0;pose<3;pose++) h.click('poseDone',{team:id,pose:String(pose)});
+    if(teamIndex<2) h.click('warmupTeam',{index:String(teamIndex+1)});
+  });
+  assert.doesNotMatch(h.html(),/type="file"|capture=/);
   h.click('go',{screen:'level1'});complete(h,0);
   assert.equal(h.state().currentScreen,'level1');
   h.click('go',{screen:'transition2'});h.tick();assert.match(h.html(),/NUR NOCH 4 MATTEN/);
@@ -182,19 +195,16 @@ test('moving a child and choosing an icon persist independently of team completi
   assert.equal(loaded.state().children[0].icon,'moon');
   assert.equal(loaded.state().children.length,12);
 });
-test('optional camera selection does not add photo data or change game progress',()=>{
-  const h=harness();fill(h);const before=h.serialized();
-  const input={dataset:{photo:'monster'},files:[{name:'team.jpg'}],value:'team.jpg'};
-  h.change(input);assert.equal(input.value,'');assert.equal(h.serialized(),before);
-});
-test('warm-up shows one team with three fixed pose photos and keeps the saved-state shape',()=>{
+test('warm-up shows one team with three fixed pose cards and keeps the saved-state shape',()=>{
   const h=harness();fill(h);h.click('go',{screen:'warmup'});
   assert.match(h.html(),/Monster-Krallen/);assert.match(h.html(),/Monster-Turm/);assert.match(h.html(),/Monster-Brüllen/);
   assert.doesNotMatch(h.html(),/8 Tentakel|Schnapp-Krokodil/);
-  assert.equal((h.html().match(/data-pose=/g)||[]).length,3);
+  assert.doesNotMatch(h.html(),/type="file"|capture=/);
+  assert.match(h.html(),/0 \/ 3 Posen/);
   for(let pose=0;pose<3;pose++) {
-    h.change({dataset:{photo:'monster',pose:String(pose)},files:[{name:'team.jpg'}],value:'team.jpg'});
+    h.click('poseDone',{team:'monster',pose:String(pose)});
     assert.equal((h.html().match(/class="pose-check"/g)||[]).length,pose+1);
+    assert.match(h.html(),new RegExp((pose+1)+' \\/ 3 Posen'));
   }
   assert.match(h.html(),/Team-Zauber geschafft!/);
   const saved=h.state();assert.equal(saved.teams.monster.gesture,0);
