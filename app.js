@@ -39,6 +39,12 @@ function go(screen) {
 }
 function chrome() {
   document.body.classList.toggle('presentation',presentation);
+  document.body.classList.toggle('birthday-mode',state.currentScreen==='done');
+  if(state.currentScreen==='done') {
+    document.querySelector('#header').innerHTML='<div class="final-controls">'+button('⚙','organizer','aria-label="'+esc(U.organizer)+'" title="'+esc(U.organizer)+'"','quiet')+button('⤢','presentation','aria-label="'+esc(presentation?U.exitPresentation:U.presentation)+'" title="'+esc(presentation?U.exitPresentation:U.presentation)+'"','quiet')+'</div>';
+    document.querySelector('#footer').innerHTML='';
+    return;
+  }
   document.querySelector('#header').innerHTML='<button class="brand" data-action="go" data-screen="home"><span aria-hidden="true">✦</span>'+esc(C.app.title)+'</button><div class="header-actions">'+(presentation?button(U.exitPresentation,'presentation','','secondary'):button(U.progress,'go','data-screen="progress"','quiet')+button(U.presentation,'presentation','','quiet')+button('⚙ '+U.organizer,'organizer','','secondary'))+'</div>';
   document.querySelector('#footer').innerHTML='<span>✧ '+esc(C.app.footer)+'</span><span class="organizer-only">'+esc(storageError || U.saved)+'</span>';
 }
@@ -144,7 +150,8 @@ function rescued() {
   return '<section class="celebration">'+heading(C.rescued.title,C.rescued.text)+mascot('unicorn')+'<div class="actions">'+nav(U.revealRewards,'rewards')+'</div></section>';
 }
 function done() {
-  return '<section class="birthday-finale">'+heading(C.done.title)+'<div class="birthday-layout"><img class="birthday-image" src="'+esc(C.done.image)+'" alt="'+esc(C.done.imageAlt)+'"><aside class="birthday-friends"><h2>'+esc(C.done.friendsHeading)+'</h2><ul>'+state.children.filter(c=>c.name.trim()).map(c=>'<li><span aria-hidden="true">'+icon(c.icon)+'</span>'+esc(c.name)+'</li>').join('')+'</ul></aside></div><p class="birthday-final-line">'+esc(C.done.text)+'</p></section>';
+  const participants=state.children.filter(c=>c.name.trim());
+  return '<section class="birthday-finale">'+heading(C.done.title)+'<div class="birthday-layout"><img class="birthday-image" src="'+esc(C.done.image)+'" alt="'+esc(C.done.imageAlt)+'"><aside class="birthday-friends"><h2>'+esc(C.done.friendsHeading)+'</h2><ul class="'+(participants.length>6?'many':'')+'">'+participants.map(c=>'<li>'+esc(c.name)+'</li>').join('')+'</ul></aside></div></section>';
 }
 function render() {
   cancelTimer(); chrome();

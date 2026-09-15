@@ -125,9 +125,10 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   h.click('rewardNext');assert.match(h.html(),/FEUER-MARSHMALLOWS freigeschaltet/);h.tick();
   h.click('rewardNext');assert.equal(h.state().currentScreen,'done');
   assert.match(h.html(),/Alles Gute zum 6. Geburtstag, Lucy!/);
-  assert.match(h.html(),/Assets\/Lucy geburtstag einlagungskarte.png/);
+  assert.match(h.html(),/Assets\/lucy-unicorn-cutout.png/);
   assert.match(h.html(),/Emma/);assert.match(h.html(),/Noah/);assert.match(h.html(),/Mia/);
-  assert.match(h.html(),/Gemeinsam seid ihr magisch/);
+  assert.match(h.html(),/Unsere Helden:/);
+  assert.doesNotMatch(h.html(),/Gemeinsam seid ihr magisch/);
 });
 test('refresh restores names, gesture, team assignments, completion and current screen',()=>{
   const h=harness();fill(h);h.click('gesture',{team:'monster',index:'2'});
@@ -228,7 +229,7 @@ test('intro timing stays within 60–90 seconds and all story transitions target
     assert.ok(Array.isArray(c[from]),from);assert.ok(c.screens[to],to);
   }
 });
-test('final birthday image uses the supplied file and participant names are safely rendered',()=>{
+test('final birthday image uses the transparent cutout and participant names are safely rendered',()=>{
   const s=finishState();s.rescued=true;s.currentScreen='done';
   s.children[1].name='<script>alert(1)</script>';s.children[2].name='   ';
   const h=harness(JSON.stringify(s));
@@ -236,6 +237,9 @@ test('final birthday image uses the supplied file and participant names are safe
   assert.doesNotMatch(h.html(),/<script>/);
   const imagePath=h.context.CONTENT.done.image;
   assert.ok(fs.existsSync(path.join(root,imagePath)));
+  const png=fs.readFileSync(path.join(root,imagePath));
+  assert.equal(png.toString('ascii',1,4),'PNG');
+  assert.equal(png[25],6,'cutout must be an RGBA PNG');
   assert.equal((h.html().match(/<img /g)||[]).length,1);
 });
 test('finishing team rewards resumes at the final birthday image',()=>{
@@ -244,4 +248,14 @@ test('finishing team rewards resumes at the final birthday image',()=>{
   assert.equal(h.state().birthdayComplete,true);
   h.click('go',{screen:'home'});h.click('resume');
   assert.equal(h.state().currentScreen,'done');
+});
+
+test('birthday screen contains only the requested greeting, heroes heading and participating names',()=>{
+  const s=finishState();s.rescued=true;s.currentScreen='done';
+  s.children[1].name='Lucy';s.children[2].name='   ';
+  const h=harness(JSON.stringify(s));
+  const visible=h.html().replace(/<[^>]*>/g,'');
+  assert.equal(visible,'Alles Gute zum 6. Geburtstag, Lucy!Unsere Helden:EmmaLucy');
+  assert.equal(h.elements['#footer'].innerHTML,'');
+  assert.doesNotMatch(h.elements['#header'].innerHTML,/class="brand"|Automatisch gespeichert/);
 });

@@ -34,7 +34,7 @@ The computer must stay on. The TV simply mirrors the organizer's device.
 7. At home, prepare the balloon and manually start the finale. At FINDET MICH,
    children discover it. Press EINHORN GEFUNDEN to celebrate the rescue.
 8. Reveal the three team snacks, then show the final birthday screen with the
-   supplied PNG and the participating children's names.
+   transparent Lucy + unicorn cutout and the participating children's names under **Unsere Helden:**.
 
 Presentation mode enlarges the display and hides organizer controls. Use its
 visible exit button to mark tasks or open the organizer panel. The panel offers
@@ -93,4 +93,9 @@ Before the party, check the actual phone/iPad and mirrored TV:
 
 Visual browser QA was unavailable during implementation: no browser was connected.
 `scope.md` and `story.md` are preserved. The final story supersedes earlier narrative
-wording and timings. The supplied PNG is used as-is without redrawing or editing.
+wording and timings. The final screen uses `Assets/lucy-unicorn-cutout.png`, extracted locally from the supplied image.
+Only the alpha mask and crop were changed; visible RGB pixels remain identical to the original.
+It is a real RGBA PNG (726 × 1220), with no generated replacement scene.
+The final screen shows only the birthday greeting, **Unsere Helden:** and the entered names,
+plus discreet icon-only organizer controls. Extraction tools are development-only; the app
+has no new runtime dependencies.

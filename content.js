@@ -451,10 +451,9 @@ window.CONTENT = {
   },
   "done": {
     "title": "Alles Gute zum 6. Geburtstag, Lucy!",
-    "friendsHeading": "Lucys kleine Helfer",
-    "text": "Gemeinsam seid ihr magisch.",
-    "image": "Assets/Lucy geburtstag einlagungskarte.png",
-    "imageAlt": "Lucys Einhorn-Geburtstagsbild"
+    "friendsHeading": "Unsere Helden:",
+    "image": "Assets/lucy-unicorn-cutout.png",
+    "imageAlt": "Lucy zusammen mit dem Einhorn"
   },
   "destinationWords": {
     "parts": [
