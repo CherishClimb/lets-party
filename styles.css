@@ -252,6 +252,61 @@ hr { border:0; border-top:1px solid var(--line); margin:20px 0; }
   .birthday-friends li { font-size:1.1rem; gap:7px; }.clue-art { font-size:2.5rem; }.clue-art span { width:120px; height:120px; }
   .wind-mats { gap:7px; }.outdoor-level .rule-card { padding:20px; }
 }
+
+/* Supplied team artwork, reused everywhere a team mascot appears. */
+.team-art { position:relative; height:clamp(155px,16vw,220px); width:100%; display:flex; align-items:center; justify-content:center; flex-shrink:0; isolation:isolate; }
+.team-art-frame { position:relative; height:100%; max-width:100%; aspect-ratio:var(--crop-ratio); overflow:hidden; }
+.team-art-frame img { position:absolute; left:0; top:0; width:var(--sprite-width); height:auto; max-width:none; transform:translate(var(--sprite-x),var(--sprite-y)); user-select:none; pointer-events:none; }
+.team-art.monster .team-art-frame { clip-path:polygon(32% 0,100% 0,100% 100%,0 100%,0 34%,8% 30%,15% 23%,22% 13%,27% 8%); }
+.team-art.octopus .team-art-frame { clip-path:polygon(0 0,100% 0,100% 74%,92% 76%,88% 100%,8% 100%,6% 76%,0 74%); }
+.team-art.crocodile .team-art-frame { clip-path:polygon(0 0,62% 0,62% 14%,75% 22%,100% 30%,100% 100%,0 100%); }
+.team-spark { position:absolute; z-index:2; color:#d8b84e; font-size:1.4rem; text-shadow:0 0 12px #fff; animation:float 3.6s ease-in-out infinite; }
+.team-spark.sp1 { top:12%; right:12%; }
+.team-spark.sp2 { bottom:12%; left:12%; font-size:1rem; animation-delay:-1.8s; }
+.team-card .team-art { margin:0 auto 12px; }
+.home-teams .team-card { display:block; padding:22px; text-align:center; }
+.home-teams .team-art { height:clamp(150px,14vw,195px); width:100%; margin:0 auto 10px; }
+.home-teams h2 { font-size:clamp(1.1rem,1.6vw,1.45rem); }
+.compact .team-art { height:125px; margin:-8px auto 5px; }
+.scene-teams .team-art { width:min(28vw,300px); height:clamp(170px,22vw,275px); }
+.award-screen > .team-art,.reward-screen > .team-art { max-width:360px; margin:0 auto; }
+.intro-teams .team-art { height:clamp(135px,14vw,190px); }
+
+/* Warm-up: one active team, three photographed poses. */
+.warmup-session { max-width:1240px; margin:0 auto; }
+.warmup-progress { display:flex; justify-content:center; gap:10px; margin:-12px auto 22px; }
+.warmup-progress span { width:13px; height:13px; border-radius:50%; background:#d9ddd6; box-shadow:0 0 0 4px transparent; }
+.warmup-progress span.done { background:#5b9b79; }
+.warmup-progress span.active { box-shadow:0 0 0 4px #d8c9ed; }
+.warmup-team-card { max-width:440px; margin:0 auto 22px; padding:18px 22px; box-shadow:0 14px 32px #4d635115; }
+.warmup-team-card .team-art { height:clamp(165px,18vw,230px); }
+.warmup-team-card h2 { margin-bottom:5px; }
+.warmup-counter { margin:0; color:var(--muted); font-weight:750; }
+.pose-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
+.pose-card { position:relative; min-width:0; padding:14px; border:2px solid transparent; border-radius:25px; background:#fffdf7; box-shadow:0 12px 30px #354a4012; text-align:center; transition:border-color .2s,transform .2s; }
+.pose-card.pose-complete { border-color:#6ea685; background:#f7fff8; }
+.pose-image-wrap { position:relative; overflow:hidden; border-radius:18px; background:#eef5f0; }
+.pose-image-wrap img { display:block; width:100%; aspect-ratio:3/4; object-fit:cover; }
+.pose-check { position:absolute; top:10px; right:10px; display:grid; place-items:center; width:38px; height:38px; border-radius:50%; background:#27634f; color:white; font-size:1.4rem; font-weight:900; box-shadow:0 3px 12px #183a2e42; }
+.pose-card h3 { margin:14px 4px 12px; font-size:clamp(1.05rem,1.7vw,1.35rem); }
+.pose-photo-button { display:block; margin:0; color:white; background:var(--green); font-size:1rem; text-align:center; }
+.team-spell-done { width:max-content; max-width:100%; margin:24px auto 4px; padding:13px 20px; border-radius:999px; background:#dff1df; color:#245a47; font-size:clamp(1.15rem,2vw,1.55rem); font-weight:850; animation:pop .45s both; }
+
+@media(max-width:700px) {
+  .home-teams .team-card { display:block; text-align:center; }
+  .home-teams .team-art { width:100%; height:170px; }
+  .compact .team-art { height:145px; }
+  .scene-teams { gap:4px; }
+  .scene-teams .team-art { width:32%; height:145px; margin:0; }
+  .pose-grid { grid-template-columns:1fr; gap:20px; }
+  .pose-card { max-width:430px; width:100%; margin:0 auto; padding:13px; }
+  .pose-image-wrap img { max-height:none; }
+  .warmup-team-card { margin-bottom:20px; }
+}
+
+@media(prefers-reduced-motion:reduce) {
+  .team-spark,.team-spell-done { animation:none; }
+}
 @media(prefers-reduced-motion:reduce) {
   .award-symbol,.all-restored,.birthday-balloons i,.wind-mats .cloud,.flies-away,.treasure-box,.magicTogether .power { animation:none; }
 }

@@ -13,9 +13,18 @@ window.CONTENT = {
       "word": "BREIT",
       "gestures": [
         "Monster-Krallen",
-        "Monster-Brüllen",
-        "Monster-Sprung"
+        "Monster-Turm",
+        "Monster-Brüllen"
       ],
+      "poseImages": [
+        "Assets/pose 8.png",
+        "Assets/pose 9.png",
+        "Assets/pose 7.png"
+      ],
+      "art": {
+        "src": "Assets/team-characters.png",
+        "crop": [975, 430, 561, 594]
+      },
       "reward": {
         "icon": "🥤",
         "name": "Besonderer Zaubertrank",
@@ -29,10 +38,19 @@ window.CONTENT = {
       "short": "Oktopusse",
       "word": "WIESEN",
       "gestures": [
-        "Oktopus-Arme",
+        "8 Tentakel",
         "Oktopus-Welle",
-        "Oktopus-Stern"
+        "Oktopus-Kugel"
       ],
+      "poseImages": [
+        "Assets/pose 2.png",
+        "Assets/pose 3.png",
+        "Assets/pose 1.png"
+      ],
+      "art": {
+        "src": "Assets/team-characters.png",
+        "crop": [445, 0, 680, 560]
+      },
       "reward": {
         "icon": "🍫",
         "name": "Besondere Zauberschokolade",
@@ -46,10 +64,19 @@ window.CONTENT = {
       "short": "Krokodile",
       "word": "SCHULE",
       "gestures": [
-        "Krokodil-Schnapp",
-        "Krokodil-Schleich",
-        "Krokodil-Power"
+        "Schnapp-Krokodil",
+        "Krokodil-Zug",
+        "Krokodil-Schleich"
       ],
+      "poseImages": [
+        "Assets/pose4.png",
+        "Assets/pose 6.png",
+        "Assets/pose 5.png"
+      ],
+      "art": {
+        "src": "Assets/team-characters.png",
+        "crop": [0, 410, 650, 614]
+      },
       "reward": {
         "icon": "🔥",
         "name": "Feuer-Marshmallows",
@@ -223,11 +250,16 @@ window.CONTENT = {
     "saveFailed": "Speichern ist gerade nicht möglich. Bitte diese Seite geöffnet lassen.",
     "corruptSave": "Der gespeicherte Spielstand konnte nicht gelesen werden. Bitte prüfe die Teams.",
     "selected": "Gewählt",
-    "selectGesture": "Wählt euer Teamzeichen.",
+    "selectGesture": "Macht alle drei Posen.",
     "countdown": "3 – 2 – 1 – TEAMFOTO!",
-    "photo": "📷 Erinnerungsfoto machen",
-    "photoHint": "Optional: Kamera oder Bildauswahl öffnen. Fotos werden hier nicht gespeichert. Bitte direkt am Gerät sichern.",
-    "photoSelected": "Bild ausgewählt. Die App speichert keine Fotos; bitte über die Kamera oder Foto-App sichern.",
+    "photo": "Foto machen",
+    "photoHint": "Die Fotos bleiben auf dem Gerät und werden nicht in der App gespeichert.",
+    "photoSelected": "Foto geschafft!",
+    "teamOf": "Team {n} von 3",
+    "previousTeam": "Vorheriges Team",
+    "nextTeam": "Nächstes Team",
+    "teamSpellDone": "Team-Zauber geschafft!",
+    "warmupProgress": "Fortschritt der drei Fototeams",
     "rewardUnlocked": "{team} haben etwas freigeschaltet!",
     "rewardCounter": "GEHEIME BELOHNUNG {n} / 3",
     "levelLabel": "LEVEL {n} / 3",
@@ -287,7 +319,7 @@ window.CONTENT = {
   },
   "warmup": {
     "title": "Jedes Rettungsteam braucht einen Team-Zauber!",
-    "text": "Wählt eine Bewegung für euer Team."
+    "text": "Macht nacheinander alle drei Posen. Nach jeder Pose kommt ein Teamfoto!"
   },
   "intro": [
     {

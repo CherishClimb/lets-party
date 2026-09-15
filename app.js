@@ -4,7 +4,8 @@
 const C = window.CONTENT, G = window.Game, U = C.ui;
 const app = document.querySelector('#app'), dialog = document.querySelector('#organizer');
 const STORAGE_KEY = 'unicorn-rescue-v1';
-let state = G.fresh(), storageError = '', presentation = false, scene = 0, timer = null, returnScreen = 'home', rewardShown = false, lastAward = null;
+let state = G.fresh(), storageError = '', presentation = false, scene = 0, timer = null, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0;
+const warmupPhotos = Object.fromEntries(C.teams.map(t=>[t.id,[false,false,false]]));
 const sequence = ['home','setup','reveal','intro','warmup','level1','transition2','level2','transition3','level3','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const fmt = (text, args) => text.replace(/\{(\w+)\}/g, (_,key) => args[key] ?? '');
@@ -15,6 +16,12 @@ const count = id => C.powers.filter((_,i)=>G.earned(state,id,i)).length;
 function button(label, action, attrs='', kind='primary') { return '<button class="'+kind+'" data-action="'+action+'" '+attrs+'>'+esc(label)+'</button>'; }
 function nav(label, screen, kind='primary', disabled=false) { return button(label,'go','data-screen="'+screen+'"'+(disabled?' disabled':''),kind); }
 function mascot(id, extra='') {
+  const picturedTeam=team(id);
+  if (picturedTeam?.art) {
+    const [x,y,w,h]=picturedTeam.art.crop;
+    const frameStyle='--crop-ratio:'+w+'/'+h+';--sprite-width:'+(1536/w*100)+'%;--sprite-x:'+(-x/1536*100)+'%;--sprite-y:'+(-y/1024*100)+'%';
+    return '<div class="team-art '+id+' '+extra+'" aria-hidden="true"><div class="team-art-frame" style="'+frameStyle+'"><img src="'+esc(picturedTeam.art.src)+'" alt="" width="1536" height="1024" draggable="false"></div><span class="team-spark sp1">✦</span><span class="team-spark sp2">✧</span></div>';
+  }
   return '<div class="mascot '+id+' '+extra+'" aria-hidden="true"><span class="tail"></span><span class="limb l1"></span><span class="limb l2"></span><span class="limb l3"></span><span class="limb l4"></span><span class="body"><i class="ear e1"></i><i class="ear e2"></i><i class="horn"></i><i class="mane"></i><i class="eye eye1"></i><i class="eye eye2"></i><i class="cheek cheek1"></i><i class="cheek cheek2"></i><i class="mouth"></i><i class="snout"></i></span><span class="spark s1">✦</span><span class="spark s2">✧</span></div>';
 }
 function powers(id, labels=false) {
@@ -27,13 +34,19 @@ function heading(title, text='', eyebrow='') { return '<div class="page-heading"
 function note(text) { document.querySelector('#notice').textContent = text; }
 function save() { try { localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); storageError=''; } catch { storageError=U.saveFailed; note(storageError); } }
 try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) state=G.normalize(JSON.parse(saved)); } catch { storageError=U.corruptSave; }
+C.teams.forEach(t=>{ if(state.teams[t.id].gesture!==null) warmupPhotos[t.id].fill(true); });
 document.title = C.app.title;
 function cancelTimer() { clearTimeout(timer); timer=null; }
 function go(screen) {
   if (!G.canVisit(state,screen)) { note(U.locked); return; }
   if (['reveal','intro','warmup','level1'].includes(screen) && !state.children.some(c=>c.name.trim())) { note(U.childRequired); screen='setup'; }
   if (screen==='progress' && state.currentScreen!=='progress') returnScreen=state.currentScreen;
-  cancelTimer(); scene=0; rewardShown=false; state.currentScreen=screen; save();
+  cancelTimer(); scene=0; rewardShown=false;
+  if(screen==='warmup') {
+    const firstOpen=C.teams.findIndex(t=>state.teams[t.id].gesture===null);
+    warmupTeam=firstOpen<0?0:firstOpen;
+  }
+  state.currentScreen=screen; save();
   if (dialog.open) dialog.close();
   render(); app.focus({preventScroll:true}); window.scrollTo({top:0,behavior:'instant'});
 }
@@ -66,10 +79,11 @@ function reveal() {
   return heading(C.reveal.title,C.reveal.text)+'<div class="team-grid reveal">'+C.teams.map(t=>teamCard(t,roster(t))).join('')+'</div><div class="actions">'+nav(U.next,'intro')+'</div>';
 }
 function warmup() {
-  return heading(C.warmup.title,C.warmup.text)+'<div class="team-grid">'+C.teams.map(t=>{
-    const chosen=state.teams[t.id].gesture;
-    return teamCard(t,'<div class="gesture-list">'+t.gestures.map((g,i)=>button(g,'gesture','data-team="'+t.id+'" data-index="'+i+'" aria-pressed="'+(chosen===i)+'"',chosen===i?'gesture chosen':'gesture')).join('')+'</div>'+(chosen!==null?'<div class="photo-cue"><p>'+esc(U.teamSpell)+'</p><strong>'+esc(U.countdown)+'</strong><label class="secondary photo-button">'+esc(U.photo)+'<input type="file" accept="image/*" capture="environment" data-photo="'+t.id+'"></label></div>':'<p class="muted">'+esc(U.selectGesture)+'</p>'));
-  }).join('')+'</div>'+(C.teams.every(t=>state.teams[t.id].gesture!==null)?'<p class="helper">'+esc(U.teamsReady)+'</p>':'')+'<p class="helper">'+esc(U.photoHint)+'</p><div class="actions">'+nav(U.next,'level1','primary',!C.teams.every(t=>state.teams[t.id].gesture!==null))+'</div>';
+  const t=C.teams[warmupTeam]||C.teams[0], checks=warmupPhotos[t.id], teamDone=checks.every(Boolean);
+  const teamHeader=teamCard(t,'<p class="warmup-counter">'+esc(fmt(U.teamOf,{n:warmupTeam+1}))+'</p>','warmup-team-card');
+  const poses=t.gestures.map((label,i)=>'<article class="pose-card '+(checks[i]?'pose-complete':'')+'"><div class="pose-image-wrap"><img src="'+esc(t.poseImages[i])+'" alt="'+esc(label)+'" loading="eager">'+(checks[i]?'<span class="pose-check" aria-label="'+esc(U.completed)+'">✓</span>':'')+'</div><h3>'+esc(label)+'</h3><label class="primary photo-button pose-photo-button">'+esc(U.photo)+'<input type="file" accept="image/*" capture="environment" data-photo="'+t.id+'" data-pose="'+i+'"></label></article>').join('');
+  const allDone=C.teams.every(team=>state.teams[team.id].gesture!==null);
+  return '<section class="warmup-session '+t.id+'">'+heading(C.warmup.title,C.warmup.text)+'<div class="warmup-progress" aria-label="'+esc(U.warmupProgress)+'">'+C.teams.map((team,i)=>'<span class="'+(state.teams[team.id].gesture!==null?'done':'')+(i===warmupTeam?' active':'')+'" aria-hidden="true"></span>').join('')+'</div>'+teamHeader+'<div class="pose-grid">'+poses+'</div>'+(teamDone?'<p class="team-spell-done">✓ '+esc(U.teamSpellDone)+'</p>':'')+'<p class="helper">'+esc(U.photoHint)+'</p><div class="actions">'+(warmupTeam>0?button(U.previousTeam,'warmupTeam','data-index="'+(warmupTeam-1)+'"','secondary'):'')+(teamDone&&warmupTeam<2?button(U.nextTeam,'warmupTeam','data-index="'+(warmupTeam+1)+'"'):'')+(allDone?nav(U.next,'level1'):'')+'</div></section>';
 }
 function level(index) {
   const l=C.levels[index];
@@ -195,8 +209,9 @@ document.addEventListener('click', event=>{
     case 'organizer': openOrganizer(); break;
     case 'close': dialog.close(); break;
     case 'reset': openOrganizer(true); break;
-    case 'resetConfirm': state=G.fresh(); returnScreen='home'; presentation=false; go('home'); note(U.resetDone); break;
+    case 'resetConfirm': state=G.fresh(); C.teams.forEach(t=>warmupPhotos[t.id].fill(false)); warmupTeam=0; returnScreen='home'; presentation=false; go('home'); note(U.resetDone); break;
     case 'gesture': state.teams[el.dataset.team].gesture=Number(el.dataset.index); save(); render(); break;
+    case 'warmupTeam': warmupTeam=Math.max(0,Math.min(2,Number(el.dataset.index))); render(); break;
     case 'mark': {
       const id=el.dataset.team, n=Number(el.dataset.level), was=state.teams[id].completedLevels[n];
       if(!G.mark(state,id,n,!was)) {note(U.locked);break;}
@@ -229,7 +244,15 @@ document.addEventListener('change',event=>{
   if(el.dataset.markTeam) {
     G.mark(state,el.dataset.markTeam,Number(el.dataset.markLevel),el.checked); save(); render(); openOrganizer();
   }
-  if(el.dataset.photo) { if(el.files?.length) note(U.photoSelected); el.value=''; }
+  if(el.dataset.photo) {
+    const hasPhoto=!!el.files?.length, pose=Number(el.dataset.pose), id=el.dataset.photo;
+    el.value='';
+    if(hasPhoto && warmupPhotos[id] && Number.isInteger(pose) && pose>=0 && pose<3) {
+      warmupPhotos[id][pose]=true;
+      if(warmupPhotos[id].every(Boolean)) state.teams[id].gesture=0;
+      save(); render(); note(U.photoSelected);
+    } else if(hasPhoto) note(U.photoSelected);
+  }
 });
 dialog.addEventListener('close',()=>scheduleScene());
 render();

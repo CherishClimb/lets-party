@@ -187,6 +187,20 @@ test('optional camera selection does not add photo data or change game progress'
   const input={dataset:{photo:'monster'},files:[{name:'team.jpg'}],value:'team.jpg'};
   h.change(input);assert.equal(input.value,'');assert.equal(h.serialized(),before);
 });
+test('warm-up shows one team with three fixed pose photos and keeps the saved-state shape',()=>{
+  const h=harness();fill(h);h.click('go',{screen:'warmup'});
+  assert.match(h.html(),/Monster-Krallen/);assert.match(h.html(),/Monster-Turm/);assert.match(h.html(),/Monster-Brüllen/);
+  assert.doesNotMatch(h.html(),/8 Tentakel|Schnapp-Krokodil/);
+  assert.equal((h.html().match(/data-pose=/g)||[]).length,3);
+  for(let pose=0;pose<3;pose++) {
+    h.change({dataset:{photo:'monster',pose:String(pose)},files:[{name:'team.jpg'}],value:'team.jpg'});
+    assert.equal((h.html().match(/class="pose-check"/g)||[]).length,pose+1);
+  }
+  assert.match(h.html(),/Team-Zauber geschafft!/);
+  const saved=h.state();assert.equal(saved.teams.monster.gesture,0);
+  assert.deepEqual(Object.keys(saved.teams.monster).sort(),['completedLevels','gesture']);
+  h.click('warmupTeam',{index:'1'});assert.match(h.html(),/8 Tentakel/);assert.doesNotMatch(h.html(),/Monster-Turm|Schnapp-Krokodil/);
+});
 
 test('Klugheit is awarded at the combined clue reveal, not when individual words are marked',()=>{
   const s=G.fresh();
