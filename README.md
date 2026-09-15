@@ -1,6 +1,6 @@
 # Die Einhorn-Rettung
 
-Local German-language party guide. Vanilla HTML/CSS/JavaScript; no build step,
+Local German-language party guide following the final storyline in `story.md`. Vanilla HTML/CSS/JavaScript; no build step,
 backend, accounts, external fonts, APIs, or runtime dependencies.
 
 ## Run
@@ -20,17 +20,21 @@ The computer must stay on. The TV simply mirrors the organizer's device.
 ## Party flow
 
 1. Fill any of the 12 slots, choose icons, and adjust teams. Empty places are fine.
-2. Reveal the teams, play/skip the intro, and choose each team's gesture.
-   Optional photo buttons open the device camera or file picker.
-3. Run the physical 5-mat and 4-mat challenges. Mark each team complete.
-   Next unlocks after all three finish. Undo is always available.
-4. Run the outdoor word search. The organizer panel contains the answers;
-   unfinished child cards show empty word areas. Reveal the completed clue:
-   BREIT + WIESEN + SCHULE, then HOF.
-5. Leave the app waiting during the courtyard activity. Back home, manually press
-   **Finale starten**.
-6. At **FINDET DAS EINHORN!**, let children discover the real unicorn balloon.
-   Confirm the find to reveal the three secret team rewards in order.
+2. Reveal the teams and play the birthday intro (about 74 seconds of content,
+   ending at the rescue invitation). Each team chooses a gesture; photos are optional.
+3. Run the 5-mat challenge. Every completed team gets a Mut reward moment.
+   The last team's moment also celebrates MUT IST ZURÜCK.
+4. Show the storm transition and run the 4-mat challenge for Zusammenhalt.
+5. Show the secret-clue transition and run the physical word search. Words remain
+   hidden on task cards. Gather the children and press ZAUBERWÖRTER VERBINDEN.
+   The words combine, HOF appears, and all teams receive Klugheit.
+6. At the schoolyard, show SUCHT DEN EINHORN-SCHATZ. Confirm SCHATZ GEFUNDEN,
+   give the children their piñata prizes, then explicitly reveal the unicorn's
+   return message. The app pauses on the calm return-home waiting screen.
+7. At home, prepare the balloon and manually start the finale. At FINDET MICH,
+   children discover it. Press EINHORN GEFUNDEN to celebrate the rescue.
+8. Reveal the three team snacks, then show the final birthday screen with the
+   supplied PNG and the participating children's names.
 
 Presentation mode enlarges the display and hides organizer controls. Use its
 visible exit button to mark tasks or open the organizer panel. The panel offers
@@ -40,7 +44,7 @@ navigation, editing, progress, replay, completion undo, and confirmed full reset
 
 All German copy lives in `content.js`: names, powers, rules, scenes, buttons,
 destination and rewards. Edit quoted strings; retain IDs and the three-team/level
-structure. Scene durations use milliseconds. The finale runs about 25 seconds.
+structure. Scene durations use milliseconds. The finale runs about 34 seconds.
 The intro waits for the organizer at its final invitation. Navigation stays usable.
 
 - `index.html`: document shell.
@@ -52,10 +56,11 @@ The intro waits for the organizer at its final invitation. Navigation stays usab
 
 ## Persistence and limits
 
-Setup, gestures, completions, current screen, rescue confirmation and reward
-position save after meaningful changes. Symbols and finale eligibility derive
-from completion flags. Undo relocks ineligible screens and preserves other work.
+Setup, gestures, completions, clue reveal, schoolyard milestones, current screen,
+rescue confirmation and reward position save after meaningful changes. Symbols and finale eligibility derive
+from completion flags and the combined-clue reveal. Undo relocks ineligible screens and preserves other work.
 Refreshing restarts an active animation from its first scene, preserving progress.
+Existing version-1 saves migrate automatically, preserving names and progress.
 There is no device sync.
 
 Camera behavior depends on the device/browser: the capture hint may open a camera
@@ -84,7 +89,8 @@ Before the party, check the actual phone/iPad and mirrored TV:
 - Readable text, no phone overflow, and accessible presentation-mode exit.
 - Camera selection and saving on that device.
 - Refresh recovery using the same browser address.
-- Full rehearsal through the courtyard, finale, balloon and rewards.
+- Full rehearsal through the clue, piñata, prizes, return message, finale, balloon, snacks and birthday image.
 
 Visual browser QA was unavailable during implementation: no browser was connected.
-`scope.md` is preserved; subsequent user clarifications are implemented above.
+`scope.md` and `story.md` are preserved. The final story supersedes earlier narrative
+wording and timings. The supplied PNG is used as-is without redrawing or editing.

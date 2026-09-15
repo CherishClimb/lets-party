@@ -35,8 +35,8 @@ function harness(saved, storageThrows=false) {
   };
 }
 function fill(h) { h.click('go',{screen:'setup'}); h.input(0,'Emma');h.input(4,'Noah');h.input(8,'Mia'); }
-function complete(h,n) { for(const id of G.teamIds) h.click('mark',{team:id,level:String(n)}); }
-function finishState() {const s=G.fresh();s.children[0].name='Emma';for(let i=0;i<3;i++) for(const id of G.teamIds) G.mark(s,id,i,true);return s;}
+function complete(h,n) { for(const id of G.teamIds) { h.click('mark',{team:id,level:String(n)}); if(n<2) { assert.match(h.html(),/gefunden!/); h.click('go',{screen:'level'+(n+1)}); } } }
+function finishState() {const s=G.fresh();s.children[0].name='Emma';for(let i=0;i<3;i++) for(const id of G.teamIds) G.mark(s,id,i,true);G.revealClue(s);s.treasureFound=true;s.returnInvited=true;return s;}
 
 test('12 slots, four default places per team, empty places allowed',()=>{
   const s=G.fresh();assert.equal(s.children.length,12);
@@ -45,7 +45,7 @@ test('12 slots, four default places per team, empty places allowed',()=>{
 });
 test('finale eligibility is exactly all nine completions across 512 combinations',()=>{
   for(let mask=0;mask<512;mask++) {
-    const s=G.fresh();G.teamIds.forEach((id,t)=>[0,1,2].forEach(i=>s.teams[id].completedLevels[i]=Boolean(mask&(1<<(t*3+i)))));
+    const s=G.fresh();s.clueRevealed=true;s.treasureFound=true;s.returnInvited=true;G.teamIds.forEach((id,t)=>[0,1,2].forEach(i=>s.teams[id].completedLevels[i]=Boolean(mask&(1<<(t*3+i)))));
     assert.equal(G.eligible(s),mask===511);
     assert.equal(G.canVisit(s,'finale'),mask===511);
   }
@@ -78,42 +78,64 @@ test('stored data is normalized and invalid screens cannot bypass gates',()=>{
   assert.equal(s.teams.monster.gesture,null);assert.deepEqual(s.teams.monster.completedLevels,[false,true,false]);
   assert.throws(()=>G.normalize({}));
 });
-test('full party: setup, story, gestures, levels, clue, home finale, physical rescue, rewards',()=>{
+test('full birthday adventure: powers, schoolyard treasure, return, balloon, snacks and birthday image',()=>{
   const h=harness();fill(h);h.click('go',{screen:'reveal'});
   assert.match(h.html(),/Emma/);assert.match(h.html(),/Noah/);assert.match(h.html(),/Mia/);
-  h.click('go',{screen:'intro'});h.tick();h.tick();h.tick();
-  assert.match(h.html(),/Seid ihr bereit/);
+  h.click('go',{screen:'intro'});
+  assert.match(h.html(),/6 Jahre alt – genau wie Lucy/);
+  assert.equal((h.html().match(/class="candle"/g)||[]).length,6);
+  for(let i=0;i<5;i++) h.tick();
+  assert.match(h.html(),/RETTEN WIR DAS EINHORN!/);assert.match(h.html(),/Emma/);
   h.click('sceneNext');
   for(const id of G.teamIds) h.click('gesture',{team:id,index:'1'});
   assert.match(h.html(),/capture="environment"/);
   h.click('go',{screen:'level1'});complete(h,0);
-  assert.equal(h.state().currentScreen,'level1','completing teams never auto-advances');
-  h.click('go',{screen:'level2'});assert.match(h.html(),/5 → 4 Matten/);complete(h,1);
-  h.click('go',{screen:'level3'});
-  assert.doesNotMatch(h.html(),/BREIT|WIESEN|SCHULE/,'answers stay off the child display before completion');
-  complete(h,2);h.click('go',{screen:'destination'});
-  assert.match(h.html(),/BREIT/);h.tick();assert.match(h.html(),/BREITWIESENSCHULE/);
-  h.tick();assert.match(h.html(),/HOF/);h.click('sceneNext');
-  assert.equal(h.state().currentScreen,'waiting');
-  assert.equal(h.timerCount(),0,'waiting never starts the finale itself');
-  assert.doesNotMatch(h.html(),/Zaubertrank|Zauberschokolade|Marshmallow/);
+  assert.equal(h.state().currentScreen,'level1');
+  h.click('go',{screen:'transition2'});h.tick();assert.match(h.html(),/NUR NOCH 4 MATTEN/);
+  h.click('sceneNext');assert.equal(h.state().currentScreen,'level2');complete(h,1);
+  h.click('go',{screen:'transition3'});assert.match(h.html(),/geheime Spur/);h.click('sceneNext');
+  assert.equal(h.state().currentScreen,'level3');
+  assert.doesNotMatch(h.html(),/BREIT|WIESEN|SCHULE/);
+  complete(h,2);
+  assert.equal(h.state().clueRevealed,false);
+  assert.doesNotMatch(h.html(),/BREIT|WIESEN|SCHULE/,'parent task screen does not leak words even after marking');
+  h.click('go',{screen:'destination'});
+  assert.match(h.html(),/Was könnte das bedeuten/);assert.match(h.html(),/ZAUBERWÖRTER VERBINDEN/);
+  assert.equal(h.timerCount(),0,'word reveal waits for the organizer to combine them');
+  h.click('sceneNext');assert.match(h.html(),/BREITWIESENSCHULE/);
+  h.tick();assert.match(h.html(),/HOF/);assert.equal(h.state().clueRevealed,true);
+  h.tick();assert.match(h.html(),/KLUGHEIT IST ZURÜCK/);
+  h.tick();assert.match(h.html(),/DIE SPUR FÜHRT ZUM SCHULHOF/);
+  h.click('sceneNext');assert.equal(h.state().currentScreen,'pinata');
+  assert.match(h.html(),/SUCHT DEN EINHORN-SCHATZ/);assert.equal(h.timerCount(),0);
+  h.click('treasureFound');assert.equal(h.state().currentScreen,'treasure');
+  assert.match(h.html(),/kleine Geburtstagsüberraschung/);assert.equal(h.timerCount(),0);
+  h.click('prizesOpened');h.tick();h.tick();assert.match(h.html(),/KEHRT ZURÜCK/);
+  h.click('sceneNext');assert.equal(h.state().currentScreen,'waiting');
+  assert.match(h.html(),/Alle drei Zauberkräfte sind sicher/);assert.equal(h.timerCount(),0);
+  assert.doesNotMatch(h.html(),/mascot unicorn|Zaubertrank|Zauberschokolade|Marshmallow/);
   h.click('go',{screen:'finale'});
-  for(let i=0;i<6;i++) h.tick();
-  assert.equal(h.state().currentScreen,'found');assert.match(h.html(),/FINDET DAS EINHORN!/);
+  for(let i=0;i<h.context.CONTENT.finale.length;i++) h.tick();
+  assert.equal(h.state().currentScreen,'found');assert.match(h.html(),/FINDET MICH!/);
   assert.doesNotMatch(h.html(),/Zaubertrank|Zauberschokolade|Marshmallow/);
-  h.click('found');assert.match(h.html(),/Besonderer Zaubertrank/);h.tick();
-  h.click('rewardNext');assert.match(h.html(),/Zauberschokolade/);h.tick();
-  h.click('rewardNext');assert.match(h.html(),/Grill-Marshmallow/);h.tick();
+  h.click('found');assert.equal(h.state().currentScreen,'rescued');
+  assert.match(h.html(),/DAS GEBURTSTAGS-EINHORN IST GERETTET/);
+  h.click('go',{screen:'rewards'});assert.match(h.html(),/ZAUBERTRANK freigeschaltet/);h.tick();
+  h.click('rewardNext');assert.match(h.html(),/ZAUBERSCHOKOLADE freigeschaltet/);h.tick();
+  h.click('rewardNext');assert.match(h.html(),/FEUER-MARSHMALLOWS freigeschaltet/);h.tick();
   h.click('rewardNext');assert.equal(h.state().currentScreen,'done');
-  assert.equal(h.state().rescued,true);
+  assert.match(h.html(),/Alles Gute zum 6. Geburtstag, Lucy!/);
+  assert.match(h.html(),/Assets\/Lucy geburtstag einlagungskarte.png/);
+  assert.match(h.html(),/Emma/);assert.match(h.html(),/Noah/);assert.match(h.html(),/Mia/);
+  assert.match(h.html(),/Gemeinsam seid ihr magisch/);
 });
 test('refresh restores names, gesture, team assignments, completion and current screen',()=>{
   const h=harness();fill(h);h.click('gesture',{team:'monster',index:'2'});
   h.click('go',{screen:'level1'});h.click('mark',{team:'monster',level:'0'});
-  const loaded=harness(h.serialized());assert.match(loaded.html(),/Mut zurückgebracht/);
+  const loaded=harness(h.serialized());assert.match(loaded.html(),/MUT gefunden/);
   assert.equal(loaded.state().children[0].name,'Emma');
   assert.equal(loaded.state().teams.monster.gesture,2);
-  assert.equal(loaded.state().currentScreen,'level1');
+  assert.equal(loaded.state().currentScreen,'award');
 });
 test('escaping child names prevents injected markup in reveal',()=>{
   const h=harness();fill(h);h.input(0,'<img src=x onerror=alert(1)>');h.click('go',{screen:'reveal'});
@@ -163,4 +185,63 @@ test('optional camera selection does not add photo data or change game progress'
   const h=harness();fill(h);const before=h.serialized();
   const input={dataset:{photo:'monster'},files:[{name:'team.jpg'}],value:'team.jpg'};
   h.change(input);assert.equal(input.value,'');assert.equal(h.serialized(),before);
+});
+
+test('Klugheit is awarded at the combined clue reveal, not when individual words are marked',()=>{
+  const s=G.fresh();
+  for(let i=0;i<3;i++) for(const id of G.teamIds) G.mark(s,id,i,true);
+  assert.equal(G.allTasksComplete(s),true);
+  for(const id of G.teamIds) assert.equal(G.earned(s,id,2),false);
+  assert.equal(G.canVisit(s,'destination'),true);
+  assert.equal(G.canVisit(s,'pinata'),false);
+  G.revealClue(s);
+  for(const id of G.teamIds) assert.equal(G.earned(s,id,2),true);
+  assert.equal(G.canVisit(s,'pinata'),true);
+  assert.equal(G.canVisit(s,'finale'),false,'schoolyard return message is still pending');
+});
+test('piñata prizes and return invitation persist, and undo relocks later story stages',()=>{
+  const s=finishState();s.currentScreen='waiting';
+  const restored=G.normalize(JSON.parse(JSON.stringify(s)));
+  assert.equal(restored.currentScreen,'waiting');
+  assert.equal(restored.treasureFound,true);assert.equal(restored.returnInvited,true);
+  G.mark(restored,'monster',2,false);
+  assert.equal(restored.clueRevealed,false);assert.equal(restored.treasureFound,false);
+  assert.equal(restored.returnInvited,false);assert.equal(G.canVisit(restored,'waiting'),false);
+});
+test('version 1 saves migrate without losing children, teams or already earned progress',()=>{
+  const old=finishState();old.version=1;old.currentScreen='waiting';
+  delete old.clueRevealed;delete old.treasureFound;delete old.returnInvited;
+  const migrated=G.normalize(old);
+  assert.equal(migrated.version,2);assert.equal(migrated.children[0].name,'Emma');
+  assert.equal(migrated.currentScreen,'waiting');assert.equal(G.canVisit(migrated,'finale'),true);
+  const partial=G.fresh();partial.version=1;partial.children[2].name='Lucy';
+  G.mark(partial,'octopus',0,true);
+  const loaded=G.normalize(partial);
+  assert.equal(loaded.children[2].name,'Lucy');assert.equal(G.earned(loaded,'octopus',0),true);
+  assert.equal(loaded.clueRevealed,false);
+});
+test('intro timing stays within 60–90 seconds and all story transitions target valid screens',()=>{
+  const h=harness(),c=h.context.CONTENT;
+  const duration=c.intro.reduce((sum,scene)=>sum+scene.duration,0);
+  assert.ok(duration>=60000 && duration<=90000);
+  for(const [from,to] of Object.entries(c.storyNext)) {
+    assert.ok(Array.isArray(c[from]),from);assert.ok(c.screens[to],to);
+  }
+});
+test('final birthday image uses the supplied file and participant names are safely rendered',()=>{
+  const s=finishState();s.rescued=true;s.currentScreen='done';
+  s.children[1].name='<script>alert(1)</script>';s.children[2].name='   ';
+  const h=harness(JSON.stringify(s));
+  assert.match(h.html(),/Emma/);assert.match(h.html(),/&lt;script&gt;/);
+  assert.doesNotMatch(h.html(),/<script>/);
+  const imagePath=h.context.CONTENT.done.image;
+  assert.ok(fs.existsSync(path.join(root,imagePath)));
+  assert.equal((h.html().match(/<img /g)||[]).length,1);
+});
+test('finishing team rewards resumes at the final birthday image',()=>{
+  const s=finishState();s.rescued=true;s.currentScreen='rewards';s.rewardIndex=2;
+  const h=harness(JSON.stringify(s));h.click('rewardNext');
+  assert.equal(h.state().birthdayComplete,true);
+  h.click('go',{screen:'home'});h.click('resume');
+  assert.equal(h.state().currentScreen,'done');
 });
