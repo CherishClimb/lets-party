@@ -253,6 +253,23 @@ test('intro timing stays within 60–90 seconds and all story transitions target
     assert.ok(Array.isArray(c[from]),from);assert.ok(c.screens[to],to);
   }
 });
+test('atmosphere follows storm and restored-magic story state',()=>{
+  const intro=harness();fill(intro);intro.click('go',{screen:'reveal'});intro.click('go',{screen:'intro'});
+  assert.match(intro.html(),/day-decor/);
+  intro.tick();intro.tick();intro.tick();
+  assert.match(intro.html(),/storm-decor/);
+  intro.click('skip');
+  assert.match(intro.html(),/storm-decor/);
+
+  const mission=G.fresh();mission.introCompleted=true;mission.currentScreen='progress';
+  assert.match(harness(JSON.stringify(mission)).html(),/storm-decor/);
+
+  const collected=finishState();collected.returnInvited=false;collected.treasureFound=false;collected.currentScreen='pinata';
+  assert.match(harness(JSON.stringify(collected)).html(),/storm-decor/);
+
+  const restored=finishState();restored.currentScreen='waiting';
+  assert.match(harness(JSON.stringify(restored)).html(),/day-decor/);
+});
 test('final birthday image uses the transparent cutout and participant names are safely rendered',()=>{
   const s=finishState();s.rescued=true;s.currentScreen='done';
   s.children[1].name='<script>alert(1)</script>';s.children[2].name='   ';

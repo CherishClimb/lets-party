@@ -4,7 +4,7 @@
 const C = window.CONTENT, G = window.Game, U = C.ui;
 const app = document.querySelector('#app'), dialog = document.querySelector('#organizer');
 const STORAGE_KEY = 'unicorn-rescue-v1';
-let state = G.fresh(), storageError = '', presentation = false, scene = 0, timer = null, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0;
+let state = G.fresh(), storageError = '', presentation = false, scene = 0, timer = null, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0, lastStorm = null;
 const warmupPoses = Object.fromEntries(C.teams.map(t=>[t.id,[false,false,false]]));
 const sequence = ['home','setup','reveal','intro','warmup','level1','transition2','level2','transition3','level3','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -13,7 +13,7 @@ const icon = id => C.icons.find(x=>x[0]===id)?.[1] || C.icons[0][1];
 const team = id => C.teams.find(t=>t.id===id);
 const children = id => state.children.filter(c=>c.teamId===id && c.name.trim());
 const count = id => C.powers.filter((_,i)=>G.earned(state,id,i)).length;
-const stormVisuals = new Set(['storm','lost','fourMats']);
+const introStormVisuals = new Set(['storm','lost','rescueTeams']);
 const birthdayScreens = new Set(['home','reveal','warmup','award','rescued','rewards','done']);
 const sparkleScreens = new Set(['award','treasure','waiting','found','rescued','rewards','done']);
 function button(label, action, attrs='', kind='primary') { return '<button class="'+kind+'" data-action="'+action+'" '+attrs+'>'+esc(label)+'</button>'; }
@@ -53,16 +53,19 @@ function activeVisual() {
 }
 function sceneFlags() {
   const screen=state.currentScreen, visual=activeVisual();
-  const storm=screen==='level2'||stormVisuals.has(visual);
-  const birthday=!storm&&(birthdayScreens.has(screen)||['birthday','forestParty'].includes(visual));
-  const butterflies=!storm&&(screen==='home'||screen==='found'||screen==='rescued'||screen==='done'||['birthday','forestParty','happy'].includes(visual));
-  const sparkles=!storm&&(sparkleScreens.has(screen)||['magicPowers','magicTogether','restoredPowers','happy'].includes(visual));
-  return {storm,birthday,butterflies,sparkles};
+  const restored=G.eligible(state)&&state.returnInvited;
+  const missionStarted=state.introCompleted||C.teams.some(t=>state.teams[t.id].gesture!==null||state.teams[t.id].completedLevels.some(Boolean));
+  const stormStarted=screen==='intro'?introStormVisuals.has(visual):missionStarted;
+  const storm=stormStarted&&!restored;
+  const birthday=!storm&&(restored||birthdayScreens.has(screen)||['birthday','forestParty'].includes(visual));
+  const butterflies=!storm&&(restored||screen==='home'||screen==='found'||screen==='rescued'||screen==='done'||['birthday','forestParty','happy'].includes(visual));
+  const sparkles=!storm&&(restored||sparkleScreens.has(screen)||['magicPowers','magicTogether','restoredPowers','happy'].includes(visual));
+  return {storm,restored,birthday,butterflies,sparkles};
 }
-function sceneDecor() {
-  const flags=sceneFlags(), a=C.assets.magic;
+function sceneDecor(flags=sceneFlags(),sunnyReturn=false) {
+  const a=C.assets.magic;
   if(state.currentScreen==='done') return '';
-  return '<div class="ambient-decor '+(flags.storm?'storm-decor':'day-decor')+'" aria-hidden="true">'
+  return '<div class="ambient-decor '+(flags.storm?'storm-decor':'day-decor')+(sunnyReturn?' sunny-return-decor':'')+'" aria-hidden="true">'
     +'<img class="decor-leaves" src="'+esc(a.leaves)+'" alt="">'
     +(flags.storm?'':'<img class="decor-flowers" src="'+esc(a.flowers)+'" alt="">')
     +(flags.butterflies?'<img class="decor-butterflies" src="'+esc(a.butterflies)+'" alt="">':'')
@@ -83,8 +86,7 @@ function go(screen) {
   if (dialog.open) dialog.close();
   render(); app.focus({preventScroll:true}); window.scrollTo({top:0,behavior:'instant'});
 }
-function chrome() {
-  const flags=sceneFlags();
+function chrome(flags=sceneFlags()) {
   document.body.classList.toggle('presentation',presentation);
   document.body.classList.toggle('birthday-mode',state.currentScreen==='done');
   document.body.classList.toggle('scene-day',!flags.storm);
@@ -208,11 +210,14 @@ function done() {
   return '<section class="birthday-finale">'+heading(C.done.title)+'<div class="birthday-layout"><img class="birthday-image" src="'+esc(C.done.image)+'" alt="'+esc(C.done.imageAlt)+'"><aside class="birthday-friends"><h2>'+esc(C.done.friendsHeading)+'</h2><ul class="'+(participants.length>6?'many':'')+'">'+participants.map(c=>'<li>'+esc(c.name)+'</li>').join('')+'</ul></aside></div></section>';
 }
 function render() {
-  cancelTimer(); chrome();
+  cancelTimer();
+  const flags=sceneFlags(), sunnyReturn=lastStorm===true&&!flags.storm;
+  lastStorm=flags.storm;
+  chrome(flags);
   const screen=state.currentScreen;
   const views={home,setup,reveal,warmup,progress,award,pinata,treasure,waiting,found,rescued,rewards,done};
   const view=views[screen]?views[screen]():/^level/.test(screen)?level(Number(screen.slice(-1))-1):story(screen);
-  app.innerHTML=sceneDecor()+view;
+  app.innerHTML=sceneDecor(flags,sunnyReturn)+view;
   note(storageError);
   scheduleScene();
 
