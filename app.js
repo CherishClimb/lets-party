@@ -4,7 +4,7 @@
 const C = window.CONTENT, G = window.Game, P = window.PhotoStore, U = C.ui;
 const app = document.querySelector('#app'), dialog = document.querySelector('#organizer');
 const STORAGE_KEY = 'unicorn-rescue-v1';
-let state = G.fresh(), storageError = '', presentation = false, scene = 0, timer = null, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0, lastStorm = null, memoryPhotos = [], photosReady = false;
+let state = G.fresh(), storageError = '', presentation = false, scene = 0, timer = null, celebrationTimer = null, finalCelebrating = false, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0, lastStorm = null, memoryPhotos = [], photosReady = false;
 const warmupPoses = Object.fromEntries(C.teams.map(t=>[t.id,[false,false,false]]));
 const sequence = ['home','setup','reveal','intro','warmup','level1','transition2','level2','transition3','level3','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -279,10 +279,22 @@ function rescued() {
 function done() {
   const photoCount=memoryPhotos.length;
   const collage=photoCount?'<section class="memory-collage photo-count-'+photoCount+'" aria-label="'+esc(C.memoryPhotos.title)+'">'+memoryPhotos.map((photo,i)=>'<figure class="memory-photo"><img src="'+esc(photo.url)+'" alt="'+esc(fmt(C.memoryPhotos.alt,{n:i+1}))+'"></figure>').join('')+'</section>':'';
-  return '<section class="birthday-finale">'+heading(C.done.title)+'<div class="birthday-layout '+(photoCount?'has-photos':'no-photos')+'"><div class="birthday-portrait"><img class="birthday-image" src="'+esc(C.done.image)+'" alt="'+esc(C.done.imageAlt)+'"><span class="birthday-sprite final-cake" aria-hidden="true"></span></div>'+collage+'</div></section>';
+  const celebration=finalCelebrating?'<div class="final-celebration-overlay" aria-hidden="true"><span class="celebration-firework fw-one"></span><span class="celebration-firework fw-two"></span><span class="celebration-firework fw-three"></span><span class="celebration-sparkle sp-one">✦</span><span class="celebration-sparkle sp-two">✧</span><span class="celebration-sparkle sp-three">✦</span><span class="celebration-sparkle sp-four">✧</span><span class="celebration-sparkle sp-five">✦</span><span class="celebration-balloon balloon-one"></span><span class="celebration-balloon balloon-two"></span><span class="celebration-balloon balloon-three"></span></div>':'';
+  return '<section class="birthday-finale">'+celebration+heading(C.done.title)+'<div class="final-celebrate-actions">'+button(C.done.celebrate,'celebrate','','primary celebrate-button')+'</div><div class="birthday-layout '+(photoCount?'has-photos':'no-photos')+'"><div class="birthday-portrait"><img class="birthday-image" src="'+esc(C.done.image)+'" alt="'+esc(C.done.imageAlt)+'"><span class="birthday-sprite final-cake" aria-hidden="true"></span></div>'+collage+'</div></section>';
+}
+function replayFinalCelebration() {
+  clearTimeout(celebrationTimer);
+  finalCelebrating=true;
+  render();
+  celebrationTimer=setTimeout(()=>{
+    celebrationTimer=null;
+    finalCelebrating=false;
+    if(state.currentScreen==='done') render();
+  },3700);
 }
 function render() {
   cancelTimer();
+  if(state.currentScreen!=='done') {clearTimeout(celebrationTimer);celebrationTimer=null;finalCelebrating=false;}
   const flags=sceneFlags(), sunnyReturn=lastStorm===true&&!flags.storm;
   lastStorm=flags.storm;
   chrome(flags);
@@ -336,6 +348,7 @@ document.addEventListener('click', event=>{
     case 'photos': openPhotoManager(); if(!photosReady) void refreshMemoryPhotos(); break;
     case 'photoRemove': void removeMemoryPhoto(el.dataset.photoId); break;
     case 'photoRemoveAll': void clearMemoryPhotos(true); break;
+    case 'celebrate': replayFinalCelebration(); break;
     case 'close': dialog.close(); break;
     case 'reset': openOrganizer(true); break;
     case 'resetConfirm': clearMemoryPhotos(false); state=G.fresh(); C.teams.forEach(t=>warmupPoses[t.id].fill(false)); warmupTeam=0; returnScreen='home'; presentation=false; go('home'); note(U.resetDone); break;

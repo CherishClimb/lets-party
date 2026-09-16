@@ -309,10 +309,22 @@ test('birthday screen without photos contains the greeting, illustration and cak
   s.children[1].name='Lucy';s.children[2].name='   ';
   const h=harness(JSON.stringify(s));
   const visible=h.html().replace(/<[^>]*>/g,'');
-  assert.equal(visible,'Alles Gute zum 6. Geburtstag, Lucy!');
+  assert.equal(visible,'Alles Gute zum 6. Geburtstag, Lucy!Feiern! 🎉');
   assert.match(h.html(),/birthday-layout no-photos/);assert.match(h.html(),/final-cake/);
   assert.equal(h.elements['#footer'].innerHTML,'');
   assert.doesNotMatch(h.elements['#header'].innerHTML,/class="brand"|Automatisch gespeichert/);
+});
+
+test('final celebration can be replayed while its button remains visible',()=>{
+  const s=finishState();s.rescued=true;s.birthdayComplete=true;s.currentScreen='done';
+  const h=harness(JSON.stringify(s));
+  assert.match(h.html(),/data-action="celebrate"/);assert.doesNotMatch(h.html(),/final-celebration-overlay/);
+  h.click('celebrate');
+  assert.match(h.html(),/final-celebration-overlay/);assert.match(h.html(),/data-action="celebrate"/);assert.equal(h.timerCount(),1);
+  h.click('celebrate');
+  assert.match(h.html(),/final-celebration-overlay/);assert.match(h.html(),/data-action="celebrate"/);assert.equal(h.timerCount(),1);
+  h.tick();
+  assert.doesNotMatch(h.html(),/final-celebration-overlay/);assert.match(h.html(),/data-action="celebrate"/);
 });
 
 test('one, two and three stored photos use their intended final-page collage layouts',async()=>{

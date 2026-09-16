@@ -490,6 +490,7 @@ window.CONTENT = {
   },
   "done": {
     "title": "Alles Gute zum 6. Geburtstag, Lucy!",
+    "celebrate": "Feiern! 🎉",
     "image": "Assets/lucy-unicorn-cutout.png",
     "imageAlt": "Lucy zusammen mit dem Einhorn"
   },

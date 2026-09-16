@@ -602,6 +602,25 @@ body.birthday-mode {
 .final-cake { width:145px; height:142px; left:0; bottom:1%; z-index:3; background-size:768px 512px; background-position:-4px -54px; filter:drop-shadow(0 8px 14px #9d713d38); animation:final-cake-float 4s ease-in-out infinite; }
 @keyframes final-cake-float { 50% { transform:translateY(-4px); filter:drop-shadow(0 8px 18px #f2c86170); } }
 
+/* Replayable, gentle birthday celebration. */
+.final-celebrate-actions { position:relative; z-index:8; display:flex; justify-content:center; margin:0 auto clamp(18px,2.5vh,30px); }
+.celebrate-button { min-width:150px; background:linear-gradient(135deg,#21846f,#6f8f5d); box-shadow:0 8px 22px #27645132,0 0 0 5px #fff9d9a8; }
+.birthday-finale > .page-heading,.birthday-finale > .birthday-layout { position:relative; z-index:7; }
+.final-celebration-overlay { position:fixed; inset:0; z-index:6; overflow:hidden; pointer-events:none; animation:celebration-overlay 3.7s ease-out both; }
+.celebration-firework { --burst:#e6b94d; position:absolute; width:clamp(90px,12vw,170px); aspect-ratio:1; border-radius:50%; opacity:0; background:repeating-conic-gradient(from 0deg,var(--burst) 0 3deg,transparent 3deg 20deg); -webkit-mask:radial-gradient(circle,transparent 0 25%,#000 26% 57%,transparent 58%); mask:radial-gradient(circle,transparent 0 25%,#000 26% 57%,transparent 58%); animation:cartoon-firework 1.25s ease-out var(--delay,0s) both; filter:drop-shadow(0 0 7px #fff6bd); }
+.fw-one { --burst:#e8b84e; --delay:.08s; left:4%; top:17%; }
+.fw-two { --burst:#73a894; --delay:.55s; right:5%; top:23%; }
+.fw-three { --burst:#a88bc4; --delay:1.35s; right:12%; bottom:6%; width:clamp(75px,9vw,125px); }
+.celebration-sparkle { position:absolute; color:#e6b747; font-size:clamp(1.4rem,3vw,3rem); opacity:0; text-shadow:0 0 12px #fff7bd; animation:celebration-sparkle 1.6s ease-in-out var(--delay,0s) both; }
+.sp-one { --delay:.25s; left:18%; top:13%; }.sp-two { --delay:.7s; right:21%; top:14%; }.sp-three { --delay:1.15s; left:7%; bottom:22%; }.sp-four { --delay:1.65s; right:8%; bottom:31%; }.sp-five { --delay:2.05s; left:48%; bottom:7%; }
+.celebration-balloon { --balloon:#e7a2a5; position:absolute; bottom:-100px; width:clamp(34px,4vw,55px); aspect-ratio:.78; border-radius:50% 50% 46% 46%; background:radial-gradient(circle at 32% 27%,#ffffffb8 0 8%,transparent 9%),var(--balloon); box-shadow:inset -7px -8px 0 #6b536014; opacity:0; animation:celebration-balloon 3.45s ease-out var(--delay,0s) both; }
+.celebration-balloon::after { content:''; position:absolute; top:98%; left:50%; width:1px; height:75px; background:#877c7180; }
+.balloon-one { --delay:.05s; --balloon:#e9a9a7; left:2.5%; }.balloon-two { --delay:.4s; --balloon:#8cbcab; right:2.5%; }.balloon-three { --delay:.85s; --balloon:#b39bc8; right:16%; }
+@keyframes celebration-overlay { 0%,100% { opacity:0; } 7%,82% { opacity:1; } }
+@keyframes cartoon-firework { 0% { opacity:0; transform:scale(.12) rotate(-10deg); } 35% { opacity:.82; } 75% { opacity:.45; transform:scale(1) rotate(8deg); } 100% { opacity:0; transform:scale(1.12) rotate(12deg); } }
+@keyframes celebration-sparkle { 0%,100% { opacity:0; transform:scale(.45) rotate(0); } 38%,66% { opacity:.9; transform:scale(1.08) rotate(18deg); } }
+@keyframes celebration-balloon { 0% { opacity:0; transform:translateY(0) rotate(-4deg); } 14% { opacity:.8; } 88% { opacity:.72; } 100% { opacity:0; transform:translateY(calc(-100vh - 150px)) rotate(7deg); } }
+
 @media(max-width:900px) {
   .birthday-layout.has-photos { grid-template-columns:minmax(220px,.72fr) minmax(420px,1.28fr); gap:24px; }
 }
@@ -616,4 +635,12 @@ body.birthday-mode {
   .photo-count-3 { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .photo-count-3 .memory-photo:first-child { grid-column:1/-1; }
   .final-cake { width:110px; height:108px; background-size:590px 393px; background-position:-3px -41px; }
+  .final-celebrate-actions { margin-bottom:20px; }
+  .celebrate-button { min-width:140px; }
+  .fw-three,.balloon-three { display:none; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .final-celebration-overlay { animation:none; opacity:.42; }
+  .celebration-firework,.celebration-sparkle,.celebration-balloon { animation:none; opacity:.32; }
+  .celebration-balloon { bottom:4%; }
 }
