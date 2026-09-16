@@ -362,6 +362,23 @@ window.CONTENT = {
       "duration": 12000
     }
   ],
+  "storyAudio": {
+    "intro": [
+      "Assets/Audio/story/scene-01.mp3",
+      "Assets/Audio/story/scene-02.mp3",
+      "Assets/Audio/story/scene-03.mp3",
+      "Assets/Audio/story/scene-04.mp3",
+      "Assets/Audio/story/scene-05.mp3",
+      "Assets/Audio/story/scene-06.mp3"
+    ]
+  },
+  "narration": {
+    "label": "🔊 Geschichte",
+    "start": "🔊 Geschichte starten",
+    "pause": "⏸ Pause",
+    "resume": "▶ Weiterhören",
+    "replay": "↻ Nochmal hören"
+  },
   "levels": [
     {
       "title": "Der Regenbogenweg",

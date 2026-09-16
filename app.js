@@ -1,7 +1,7 @@
 /* DOM rendering and interaction. All user-facing copy comes from CONTENT. */
 (function () {
 'use strict';
-const C = window.CONTENT, G = window.Game, P = window.PhotoStore, U = C.ui;
+const C = window.CONTENT, G = window.Game, P = window.PhotoStore, N = window.StoryNarration, U = C.ui;
 const app = document.querySelector('#app'), dialog = document.querySelector('#organizer');
 const STORAGE_KEY = 'unicorn-rescue-v1';
 let state = G.fresh(), storageError = '', presentation = false, scene = 0, timer = null, celebrationTimer = null, finalCelebrating = false, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0, lastStorm = null, memoryPhotos = [], photosReady = false;
@@ -118,6 +118,32 @@ try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) state=G.normal
 C.teams.forEach(t=>{ if(state.teams[t.id].gesture!==null) warmupPoses[t.id].fill(true); });
 document.title = C.app.title;
 function cancelTimer() { clearTimeout(timer); timer=null; }
+function currentNarration() {
+  const screen=state.currentScreen,src=C.storyAudio?.[screen]?.[scene];
+  return src?{id:screen+':'+(scene+1),src}:null;
+}
+function narrationControls() {
+  const n=C.narration;
+  return '<div class="narration-controls" hidden><span class="narration-label"><i aria-hidden="true">♪</i>'+esc(n.label)+'</span><div class="narration-actions">'+button(n.start,'narrationStart','','secondary narration-start')+button(n.pause,'narrationToggle','','secondary narration-toggle')+button(n.replay,'narrationReplay','','quiet narration-replay')+'</div></div>';
+}
+function updateNarrationUi(snapshot=N?.snapshot?.()) {
+  const controls=app.querySelector?.('.narration-controls'),target=currentNarration();
+  if(!controls||!target||!snapshot||snapshot.id!==target.id) return;
+  const unavailable=!snapshot.supported||['idle','loading','missing'].includes(snapshot.status);
+  controls.hidden=unavailable;
+  if(unavailable) return;
+  const blocked=snapshot.status==='blocked',playing=snapshot.status==='playing';
+  controls.classList.toggle('is-playing',playing);
+  const start=controls.querySelector('.narration-start'),toggle=controls.querySelector('.narration-toggle'),replay=controls.querySelector('.narration-replay');
+  start.hidden=!blocked;toggle.hidden=blocked;replay.hidden=blocked;
+  toggle.textContent=playing?C.narration.pause:C.narration.resume;
+}
+function syncNarration() {
+  const target=currentNarration();
+  if(!target) {N?.stop?.();return;}
+  N?.open?.(target.id,target.src);
+  updateNarrationUi();
+}
 function activeVisual() {
   const scenes=C[state.currentScreen];
   return Array.isArray(scenes)?scenes[scene]?.visual||'':'';
@@ -238,6 +264,7 @@ function scheduleScene() {
   if (screen==='rewards' && !rewardShown && !dialog.open) { timer=setTimeout(()=>{rewardShown=true;document.querySelector('.reward')?.classList.add('revealed');},900); return; }
   const scenes=C[screen];
   if (!Array.isArray(scenes) || dialog.open) return;
+  if(C.storyAudio?.[screen]?.[scene]) return;
   if (!scenes[scene].manual && (scene<scenes.length-1 || screen==='finale')) timer=setTimeout(()=>advanceScene(),scenes[scene].duration);
 }
 function advanceScene() {
@@ -255,7 +282,7 @@ function advanceScene() {
 function story(screen) {
   const scenes=C[screen],item=scenes[scene],last=scene===scenes.length-1;
   const nextLabel=item.button||(screen==='intro'&&last?U.startAdventure:screen==='destination'&&last?U.toCourtyard:screen==='returnMessage'&&last?U.returnHome:U.next);
-  return '<section class="story '+item.visual+'">'+heading(C.screens[screen],'',fmt(U.stepCounter,{n:scene+1,total:scenes.length}))+'<div class="scene-visual">'+visual(item.visual)+'</div>'+(item.title?'<h2 class="scene-title">'+esc(item.title)+'</h2>':'')+(item.text?'<p class="story-text">'+esc(item.text).replaceAll('\n','<br>')+'</p>':'')+'<div class="scene-dots" aria-hidden="true">'+scenes.map((_,i)=>'<i class="'+(i===scene?'active':'')+'"></i>').join('')+'</div><div class="actions">'+(scene?button(U.back,'sceneBack','','secondary'):'')+button(nextLabel,'sceneNext')+(screen==='intro'?button(U.skip,'skip','','quiet'):'')+'</div></section>';
+  return '<section class="story '+item.visual+'">'+heading(C.screens[screen],'',fmt(U.stepCounter,{n:scene+1,total:scenes.length}))+'<div class="scene-visual">'+visual(item.visual)+'</div>'+(item.title?'<h2 class="scene-title">'+esc(item.title)+'</h2>':'')+(item.text?'<p class="story-text">'+esc(item.text).replaceAll('\n','<br>')+'</p>':'')+(C.storyAudio?.[screen]?.[scene]?narrationControls():'')+'<div class="scene-dots" aria-hidden="true">'+scenes.map((_,i)=>'<i class="'+(i===scene?'active':'')+'"></i>').join('')+'</div><div class="actions">'+(scene?button(U.back,'sceneBack','','secondary'):'')+button(nextLabel,'sceneNext')+(screen==='intro'?button(U.skip,'skip','','quiet'):'')+'</div></section>';
 }
 function pinata() {
   return '<section class="story">'+heading(C.pinata.title,C.pinata.text)+'<div class="scene-visual">'+visual('treasure')+'</div><div class="actions organizer-only">'+button(U.treasureFound,'treasureFound')+'</div></section>';
@@ -302,6 +329,7 @@ function render() {
   const views={home,setup,reveal,warmup,progress,award,pinata,treasure,waiting,found,rescued,rewards,done};
   const view=views[screen]?views[screen]():/^level/.test(screen)?level(Number(screen.slice(-1))-1):story(screen);
   app.innerHTML=sceneDecor(flags,sunnyReturn)+view;
+  syncNarration();
   note(storageError);
   scheduleScene();
 
@@ -349,6 +377,9 @@ document.addEventListener('click', event=>{
     case 'photoRemove': void removeMemoryPhoto(el.dataset.photoId); break;
     case 'photoRemoveAll': void clearMemoryPhotos(true); break;
     case 'celebrate': replayFinalCelebration(); break;
+    case 'narrationStart': void N?.play?.(); break;
+    case 'narrationToggle': N?.toggle?.(); break;
+    case 'narrationReplay': N?.replay?.(); break;
     case 'close': dialog.close(); break;
     case 'reset': openOrganizer(true); break;
     case 'resetConfirm': clearMemoryPhotos(false); state=G.fresh(); C.teams.forEach(t=>warmupPoses[t.id].fill(false)); warmupTeam=0; returnScreen='home'; presentation=false; go('home'); note(U.resetDone); break;
@@ -399,6 +430,7 @@ document.addEventListener('change',event=>{
   }
 });
 dialog.addEventListener('close',()=>scheduleScene());
+N?.subscribe?.(updateNarrationUi);
 render();
 void refreshMemoryPhotos();
 })();

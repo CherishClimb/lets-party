@@ -7,9 +7,19 @@ const path = require('node:path');
 const G = require('../game.js');
 const root = path.resolve(__dirname,'..');
 
-function harness(saved, storageThrows=false, photoRecords=null) {
+function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok') {
   const listeners = {}, timers = new Map(); let tid=0, stored=saved;
-  const element = () => ({innerHTML:'',textContent:'',open:false,focus(){},classList:{toggle(){},add(){}},handlers:{},addEventListener(type,fn){this.handlers[type]=fn;}});
+  const audioInstances=[];
+  class FakeAudio {
+    constructor(){this.src='';this.preload='';this.currentTime=0;this.paused=true;this.mode=audioMode;this.playCalls=0;this.pauseCalls=0;this.handlers={};audioInstances.push(this);}
+    addEventListener(type,fn){(this.handlers[type]??=[]).push(fn);}
+    emit(type){for(const fn of this.handlers[type]||[]) fn();}
+    load(){if(!this.src)return;if(this.mode==='missing')this.emit('error');else this.emit('canplay');}
+    play(){this.playCalls++;if(this.mode==='blocked'){const error=Error('blocked');error.name='NotAllowedError';return Promise.reject(error);}if(this.mode==='missing'){const error=Error('missing');error.name='NotSupportedError';return Promise.reject(error);}this.paused=false;this.emit('playing');return Promise.resolve();}
+    pause(){this.pauseCalls++;if(!this.paused){this.paused=true;this.emit('pause');}}
+    removeAttribute(name){if(name==='src')this.src='';}
+  }
+  const element = () => ({innerHTML:'',textContent:'',open:false,hidden:false,focus(){},querySelector(){return null;},setAttribute(){},classList:{toggle(){},add(){}},handlers:{},addEventListener(type,fn){this.handlers[type]=fn;}});
   const elements = Object.fromEntries(['#app','#header','#footer','#notice','#organizer','.reward'].map(k=>[k,element()]));
   const dialog=elements['#organizer'];
   dialog.showModal=()=>{dialog.open=true;};
@@ -18,11 +28,11 @@ function harness(saved, storageThrows=false, photoRecords=null) {
     console, window:null, document:{title:'',body:element(),querySelector:s=>elements[s],addEventListener:(type,fn)=>listeners[type]=fn},
     localStorage:{getItem:()=>stored,setItem:(key,value)=>{if(storageThrows) throw Error('blocked');stored=value;}},
     setTimeout:fn=>{timers.set(++tid,fn);return tid;},clearTimeout:id=>timers.delete(id),scrollTo(){},
-    URL:{createObjectURL:blob=>'blob:'+blob.id,revokeObjectURL(){}}
+    URL:{createObjectURL:blob=>'blob:'+blob.id,revokeObjectURL(){}},Audio:FakeAudio
   };
   context.window=context;
   vm.createContext(context);
-  for(const name of ['content.js','game.js','photo-store.js']) vm.runInContext(fs.readFileSync(path.join(root,name),'utf8'),context,{filename:name});
+  for(const name of ['content.js','game.js','photo-store.js','narration.js']) vm.runInContext(fs.readFileSync(path.join(root,name),'utf8'),context,{filename:name});
   if(photoRecords) context.PhotoStore.list=()=>Promise.resolve(photoRecords);
   vm.runInContext(fs.readFileSync(path.join(root,'app.js'),'utf8'),context,{filename:'app.js'});
   return {
@@ -34,7 +44,9 @@ function harness(saved, storageThrows=false, photoRecords=null) {
     timerCount:()=>timers.size,
     state:()=>JSON.parse(stored),
     html:()=>elements['#app'].innerHTML,
-    serialized:()=>stored
+    serialized:()=>stored,
+    audio:()=>audioInstances[0],
+    audioCount:()=>audioInstances.length
   };
 }
 function fill(h) { h.click('go',{screen:'setup'}); h.input(0,'Emma');h.input(4,'Noah');h.input(8,'Mia'); }
@@ -97,7 +109,7 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   h.click('go',{screen:'intro'});
   assert.match(h.html(),/6 Jahre alt – genau wie Lucy/);
   assert.equal((h.html().match(/class="candle"/g)||[]).length,6);
-  for(let i=0;i<5;i++) h.tick();
+  for(let i=0;i<5;i++) h.click('sceneNext');
   assert.match(h.html(),/RETTEN WIR DAS EINHORN!/);assert.match(h.html(),/Emma/);
   h.click('sceneNext');
   G.teamIds.forEach((id,teamIndex)=>{
@@ -158,10 +170,10 @@ test('escaping child names prevents injected markup in reveal',()=>{
   const h=harness();fill(h);h.input(0,'<img src=x onerror=alert(1)>');h.click('go',{screen:'reveal'});
   assert.doesNotMatch(h.html(),/<img src=x/);assert.match(h.html(),/&lt;img/);
 });
-test('leaving an animated screen cancels timers; organizer pauses it',()=>{
-  const h=harness();fill(h);h.click('go',{screen:'intro'});assert.equal(h.timerCount(),1);
+test('narrated intro scenes wait for the parent while organizer controls are open',()=>{
+  const h=harness();fill(h);h.click('go',{screen:'intro'});assert.equal(h.timerCount(),0);
   h.click('organizer');assert.equal(h.timerCount(),0);
-  h.click('close');assert.equal(h.timerCount(),1);
+  h.click('close');assert.equal(h.timerCount(),0);
   h.click('go',{screen:'setup'});assert.equal(h.timerCount(),0);
 });
 test('organizer shortcuts cannot bypass finale and rescue requirements',()=>{
@@ -259,18 +271,46 @@ test('version 1 saves migrate without losing children, teams or already earned p
   assert.equal(loaded.children[2].name,'Lucy');assert.equal(G.earned(loaded,'octopus',0),true);
   assert.equal(loaded.clueRevealed,false);
 });
-test('intro timing stays within 60–90 seconds and all story transitions target valid screens',()=>{
+test('six intro scenes have central audio mappings and valid story transitions',()=>{
   const h=harness(),c=h.context.CONTENT;
-  const duration=c.intro.reduce((sum,scene)=>sum+scene.duration,0);
-  assert.ok(duration>=60000 && duration<=90000);
+  assert.equal(c.intro.length,6);assert.equal(c.storyAudio.intro.length,6);
+  c.storyAudio.intro.forEach((src,i)=>assert.equal(src,'Assets/Audio/story/scene-'+String(i+1).padStart(2,'0')+'.mp3'));
   for(const [from,to] of Object.entries(c.storyNext)) {
     assert.ok(Array.isArray(c[from]),from);assert.ok(c.screens[to],to);
   }
 });
+test('one narration player follows intro scenes and supports pause, resume and replay',()=>{
+  const h=harness();fill(h);h.click('go',{screen:'intro'});
+  assert.equal(h.context.StoryNarration.snapshot().id,'intro:1');
+  assert.equal(h.context.StoryNarration.snapshot().status,'playing');
+  assert.match(h.audio().src,/scene-01\.mp3$/);assert.equal(h.timerCount(),0);assert.equal(h.audioCount(),1);
+  assert.match(h.html(),/Geschichte starten/);assert.match(h.html(),/Nochmal h/);
+  h.audio().currentTime=4;h.click('narrationToggle');assert.equal(h.context.StoryNarration.snapshot().status,'paused');assert.equal(h.audio().currentTime,4);
+  h.click('narrationToggle');assert.equal(h.context.StoryNarration.snapshot().status,'playing');
+  h.audio().currentTime=5;h.click('narrationReplay');assert.equal(h.audio().currentTime,0);
+  const pauses=h.audio().pauseCalls;h.click('sceneNext');
+  assert.equal(h.context.StoryNarration.snapshot().id,'intro:2');assert.match(h.audio().src,/scene-02\.mp3$/);assert.ok(h.audio().pauseCalls>pauses);
+  h.audio().emit('ended');assert.equal(h.context.StoryNarration.snapshot().status,'ended');assert.equal(h.timerCount(),0);
+  assert.equal(h.context.StoryNarration.snapshot().id,'intro:2');
+  h.click('skip');assert.equal(h.context.StoryNarration.snapshot().status,'idle');assert.equal(h.audio().src,'');
+});
+test('blocked autoplay can be unlocked without changing the scene',async()=>{
+  const h=harness(undefined,false,null,'blocked');fill(h);h.click('go',{screen:'intro'});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.context.StoryNarration.snapshot().status,'blocked');assert.equal(h.context.StoryNarration.snapshot().id,'intro:1');
+  h.audio().mode='ok';h.click('narrationStart');await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.context.StoryNarration.snapshot().status,'playing');assert.equal(h.context.StoryNarration.snapshot().id,'intro:1');
+});
+test('missing narration stays hidden and never blocks story navigation',async()=>{
+  const h=harness(undefined,false,null,'missing');fill(h);h.click('go',{screen:'intro'});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.context.StoryNarration.snapshot().status,'missing');assert.match(h.html(),/narration-controls" hidden/);
+  h.click('sceneNext');assert.equal(h.context.StoryNarration.snapshot().id,'intro:2');assert.equal(h.state().currentScreen,'intro');
+});
 test('atmosphere follows storm and restored-magic story state',()=>{
   const intro=harness();fill(intro);intro.click('go',{screen:'reveal'});intro.click('go',{screen:'intro'});
   assert.match(intro.html(),/day-decor/);
-  intro.tick();intro.tick();intro.tick();
+  intro.click('sceneNext');intro.click('sceneNext');intro.click('sceneNext');
   assert.match(intro.html(),/storm-decor/);
   intro.click('skip');
   assert.match(intro.html(),/storm-decor/);
