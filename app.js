@@ -13,6 +13,9 @@ const icon = id => C.icons.find(x=>x[0]===id)?.[1] || C.icons[0][1];
 const team = id => C.teams.find(t=>t.id===id);
 const children = id => state.children.filter(c=>c.teamId===id && c.name.trim());
 const count = id => C.powers.filter((_,i)=>G.earned(state,id,i)).length;
+const stormVisuals = new Set(['storm','lost','fourMats']);
+const birthdayScreens = new Set(['home','reveal','warmup','award','rescued','rewards','done']);
+const sparkleScreens = new Set(['award','treasure','waiting','found','rescued','rewards','done']);
 function button(label, action, attrs='', kind='primary') { return '<button class="'+kind+'" data-action="'+action+'" '+attrs+'>'+esc(label)+'</button>'; }
 function nav(label, screen, kind='primary', disabled=false) { return button(label,'go','data-screen="'+screen+'"'+(disabled?' disabled':''),kind); }
 function mascot(id, extra='') {
@@ -22,6 +25,7 @@ function mascot(id, extra='') {
     const frameStyle='--crop-ratio:'+w+'/'+h+';--sprite-width:'+(1536/w*100)+'%;--sprite-x:'+(-x/1536*100)+'%;--sprite-y:'+(-y/1024*100)+'%';
     return '<div class="team-art '+id+' '+extra+'" aria-hidden="true"><div class="team-art-frame" style="'+frameStyle+'"><img src="'+esc(picturedTeam.art.src)+'" alt="" width="1536" height="1024" draggable="false"></div><span class="team-spark sp1">✦</span><span class="team-spark sp2">✧</span></div>';
   }
+  if(id==='unicorn') return '<div class="magic-unicorn '+extra+'" aria-hidden="true"><img src="'+esc(C.assets.magic.unicorn)+'" alt="" draggable="false"></div>';
   return '<div class="mascot '+id+' '+extra+'" aria-hidden="true"><span class="tail"></span><span class="limb l1"></span><span class="limb l2"></span><span class="limb l3"></span><span class="limb l4"></span><span class="body"><i class="ear e1"></i><i class="ear e2"></i><i class="horn"></i><i class="mane"></i><i class="eye eye1"></i><i class="eye eye2"></i><i class="cheek cheek1"></i><i class="cheek cheek2"></i><i class="mouth"></i><i class="snout"></i></span><span class="spark s1">✦</span><span class="spark s2">✧</span></div>';
 }
 function powers(id, labels=false) {
@@ -43,6 +47,29 @@ try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) state=G.normal
 C.teams.forEach(t=>{ if(state.teams[t.id].gesture!==null) warmupPoses[t.id].fill(true); });
 document.title = C.app.title;
 function cancelTimer() { clearTimeout(timer); timer=null; }
+function activeVisual() {
+  const scenes=C[state.currentScreen];
+  return Array.isArray(scenes)?scenes[scene]?.visual||'':'';
+}
+function sceneFlags() {
+  const screen=state.currentScreen, visual=activeVisual();
+  const storm=screen==='level2'||stormVisuals.has(visual);
+  const birthday=!storm&&(birthdayScreens.has(screen)||['birthday','forestParty'].includes(visual));
+  const butterflies=!storm&&(screen==='home'||screen==='found'||screen==='rescued'||screen==='done'||['birthday','forestParty','happy'].includes(visual));
+  const sparkles=!storm&&(sparkleScreens.has(screen)||['magicPowers','magicTogether','restoredPowers','happy'].includes(visual));
+  return {storm,birthday,butterflies,sparkles};
+}
+function sceneDecor() {
+  const flags=sceneFlags(), a=C.assets.magic;
+  if(state.currentScreen==='done') return '';
+  return '<div class="ambient-decor '+(flags.storm?'storm-decor':'day-decor')+'" aria-hidden="true">'
+    +'<img class="decor-leaves" src="'+esc(a.leaves)+'" alt="">'
+    +(flags.storm?'':'<img class="decor-flowers" src="'+esc(a.flowers)+'" alt="">')
+    +(flags.butterflies?'<img class="decor-butterflies" src="'+esc(a.butterflies)+'" alt="">':'')
+    +(flags.sparkles?'<img class="decor-sparkles" src="'+esc(a.sparkles)+'" alt="">':'')
+    +(flags.birthday?'<span class="birthday-sprite birthday-bunting"></span>':'')
+    +'</div>';
+}
 function go(screen) {
   if (!G.canVisit(state,screen)) { note(U.locked); return; }
   if (['reveal','intro','warmup','level1'].includes(screen) && !state.children.some(c=>c.name.trim())) { note(U.childRequired); screen='setup'; }
@@ -57,8 +84,11 @@ function go(screen) {
   render(); app.focus({preventScroll:true}); window.scrollTo({top:0,behavior:'instant'});
 }
 function chrome() {
+  const flags=sceneFlags();
   document.body.classList.toggle('presentation',presentation);
   document.body.classList.toggle('birthday-mode',state.currentScreen==='done');
+  document.body.classList.toggle('scene-day',!flags.storm);
+  document.body.classList.toggle('scene-storm',flags.storm);
   if(state.currentScreen==='done') {
     document.querySelector('#header').innerHTML='<div class="final-controls">'+button('⚙','organizer','aria-label="'+esc(U.organizer)+'" title="'+esc(U.organizer)+'"','quiet')+button('⤢','presentation','aria-label="'+esc(presentation?U.exitPresentation:U.presentation)+'" title="'+esc(presentation?U.exitPresentation:U.presentation)+'"','quiet')+'</div>';
     document.querySelector('#footer').innerHTML='';
@@ -77,7 +107,7 @@ function teamCard(t, body, cls='') {
 function home() {
   const h=C.home;
   const hasChildren=state.children.some(c=>c.name.trim());
-  return '<section class="home-hero"><div class="hero-copy"><p class="eyebrow">'+esc(h.tag)+'</p><h1>'+esc(h.title).replace('\n','<br>')+'</h1><p class="lead">'+esc(h.text)+'</p><div class="actions">'+(hasChildren?button(U.resume,'resume')+nav(U.preparation,'setup','quiet'):nav(U.startSetup,'setup'))+'</div></div><div class="hero-art"><div class="rainbow"></div><div class="cloud c1"></div><div class="cloud c2"></div><div class="birthday-balloons" aria-hidden="true"><i></i><i></i></div>'+mascot('unicorn','hero-unicorn')+'<span class="floating-star">✦</span><div class="mission"><p class="eyebrow">'+esc(h.mission)+'</p>'+powers(null,true)+'</div></div></section><section class="team-preview"><p class="eyebrow">'+esc(U.rescueTeams)+'</p><div class="team-grid home-teams">'+C.teams.map(t=>teamCard(t,'<p>'+esc(fmt(U.childrenCount,{n:children(t.id).length}))+'</p>')).join('')+'</div></section>';
+  return '<section class="home-hero"><div class="hero-copy"><p class="eyebrow">'+esc(h.tag)+'</p><h1>'+esc(h.title).replace('\n','<br>')+'</h1><p class="lead">'+esc(h.text)+'</p><div class="actions">'+(hasChildren?button(U.resume,'resume')+nav(U.preparation,'setup','quiet'):nav(U.startSetup,'setup'))+'</div></div><div class="hero-art"><div class="rainbow"></div><div class="cloud c1"></div><div class="cloud c2"></div><span class="birthday-sprite birthday-balloons-asset" aria-hidden="true"></span>'+mascot('unicorn','hero-unicorn')+'<span class="floating-star">✦</span><div class="mission"><p class="eyebrow">'+esc(h.mission)+'</p>'+powers(null,true)+'</div></div></section><section class="team-preview"><p class="eyebrow">'+esc(U.rescueTeams)+'</p><div class="team-grid home-teams">'+C.teams.map(t=>teamCard(t,'<p>'+esc(fmt(U.childrenCount,{n:children(t.id).length}))+'</p>')).join('')+'</div></section>';
 }
 function setup() {
   const childSlot=(c,i)=>'<article class="child-slot '+c.teamId+'"><div class="slot-heading"><span>'+esc(fmt(U.slot,{n:i+1}))+'</span><span aria-hidden="true">'+icon(c.icon)+'</span></div><label>'+esc(U.name)+'<input data-child="'+i+'" data-field="name" value="'+esc(c.name)+'" placeholder="'+esc(U.empty)+'" maxlength="40" autocomplete="off"></label><div class="field-pair"><label>'+esc(U.icon)+'<select data-child="'+i+'" data-field="icon">'+C.icons.map(x=>'<option value="'+x[0]+'"'+(x[0]===c.icon?' selected':'')+'>'+x[1]+' '+esc(x[2])+'</option>').join('')+'</select></label><label>'+esc(U.team)+'<select data-child="'+i+'" data-field="teamId">'+C.teams.map(t=>'<option value="'+t.id+'"'+(t.id===c.teamId?' selected':'')+'>'+esc(t.short)+'</option>').join('')+'</select></label></div></article>';
@@ -123,10 +153,11 @@ function visual(type) {
   if(type==='restoredPowers') return '<div class="restored-lines">'+C.powers.map((p,i)=>'<p><span aria-hidden="true">'+p.icon+'</span>'+esc(C.restoredPowers[i])+'</p>').join('')+'</div>';
   if(type==='fourMats') return '<div class="wind-mats" aria-hidden="true"><div class="cloud"></div>'+Array.from({length:5},(_,i)=>'<span class="mat '+(i===4?'flies-away':'')+'">'+(i+1)+'</span>').join('')+'</div>';
   if(type==='clue') return '<div class="clue-art" aria-hidden="true">✧ <span>?</span> ✧</div>';
-  if(type==='treasure') return '<div class="treasure-art" aria-hidden="true"><span>✦</span><div class="treasure-box">✧</div><span>✧</span></div>';
+  if(type==='treasure') return '<div class="treasure-art" aria-hidden="true"><span>✦</span><img class="treasure-image" src="'+esc(C.assets.magic.treasure)+'" alt=""><span>✧</span></div>';
   if(type==='message') return '<div class="message-art" aria-hidden="true">✉<span>✦</span></div>';
-  const birthday=['birthday','forestParty','storm'].includes(type);
-  return '<div class="story-art '+type+'">'+(birthday||type==='forestEmpty'?'<div class="forest-trees" aria-hidden="true"><i></i><i></i><i></i></div>':'')+'<div class="cloud c1"></div><div class="cloud c2"></div>'+(type==='forestEmpty'?'':mascot('unicorn'))+(birthday?'<div class="birthday-balloons" aria-hidden="true"><i></i><i></i></div><div class="birthday-cake" aria-hidden="true">'+Array.from({length:6},()=>'<i class="candle"></i>').join('')+'</div>':'')+(type==='lost'||type==='restore'?'<div class="flying-powers">'+powers(null,true)+'</div>':'')+'</div>';
+  const forestScene=['birthday','forestParty','storm'].includes(type);
+  const birthday=['birthday','forestParty'].includes(type);
+  return '<div class="story-art '+type+'">'+(forestScene||type==='forestEmpty'?'<div class="forest-trees" aria-hidden="true"><i></i><i></i><i></i></div>':'')+'<div class="cloud c1"></div><div class="cloud c2"></div>'+(type==='forestEmpty'?'':mascot('unicorn'))+(birthday?'<span class="birthday-sprite birthday-balloons-asset" aria-hidden="true"></span><span class="birthday-sprite birthday-cake-asset" aria-hidden="true">'+Array.from({length:6},()=>'<i class="candle"></i>').join('')+'</span>':'')+(type==='lost'||type==='restore'?'<div class="flying-powers">'+powers(null,true)+'</div>':'')+'</div>';
 }
 function scheduleScene() {
   cancelTimer();
@@ -180,7 +211,8 @@ function render() {
   cancelTimer(); chrome();
   const screen=state.currentScreen;
   const views={home,setup,reveal,warmup,progress,award,pinata,treasure,waiting,found,rescued,rewards,done};
-  app.innerHTML=views[screen]?views[screen]():/^level/.test(screen)?level(Number(screen.slice(-1))-1):story(screen);
+  const view=views[screen]?views[screen]():/^level/.test(screen)?level(Number(screen.slice(-1))-1):story(screen);
+  app.innerHTML=sceneDecor()+view;
   note(storageError);
   scheduleScene();
 

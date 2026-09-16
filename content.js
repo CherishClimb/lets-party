@@ -5,6 +5,19 @@ window.CONTENT = {
     "eyebrow": "EIN MAGISCHES TEAMABENTEUER",
     "footer": "Gemeinsam sind wir magisch."
   },
+  "assets": {
+    "magic": {
+      "forestDay": "Assets/magic/forest-day.png.png",
+      "forestStorm": "Assets/magic/enchanted_forest_stormscape_with_castle.png.png",
+      "unicorn": "Assets/magic/sparkling_pastel_rainbow_unicorn.png.png",
+      "leaves": "Assets/magic/leaves-branch.png.png",
+      "flowers": "Assets/magic/flowers.png.png",
+      "butterflies": "Assets/magic/butterflies.png.png",
+      "sparkles": "Assets/magic/sparkles.png.png",
+      "birthdayDecorations": "Assets/magic/decos.png",
+      "treasure": "Assets/magic/treasure-chest.png.png"
+    }
+  },
   "teams": [
     {
       "id": "monster",

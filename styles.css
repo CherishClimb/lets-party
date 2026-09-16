@@ -473,3 +473,76 @@ main { max-width:1480px; padding:clamp(28px,4vw,58px); }
   .outdoor-level { padding:22px 14px; border-radius:28px; }
   .award-screen,.reward-screen,.celebration { padding:30px 18px; border-radius:30px; }
 }
+
+/* Reusable magical atmosphere: one day scene, one storm scene, and light decor. */
+body.scene-day:not(.birthday-mode) {
+  background:
+    linear-gradient(180deg,#f7fff3c7 0%,#fff9e8de 100%),
+    url("Assets/magic/forest-day.png.png") center / cover fixed;
+}
+body.scene-storm:not(.birthday-mode) {
+  background:
+    linear-gradient(180deg,#e8eef6a6 0%,#e7eadfc9 100%),
+    url("Assets/magic/enchanted_forest_stormscape_with_castle.png.png") center / cover fixed;
+}
+body.scene-storm header { background:#eef2f6df; border-bottom-color:#9daaba88; }
+body.scene-storm footer { color:#384b55; }
+#app { position:relative; isolation:isolate; }
+#app > :not(.ambient-decor) { position:relative; z-index:1; }
+.ambient-decor { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+.ambient-decor img { position:absolute; display:block; user-select:none; }
+.decor-leaves { width:clamp(210px,25vw,400px); top:-7%; left:-5%; opacity:.72; transform-origin:20% 20%; animation:branch-sway 7s ease-in-out infinite alternate; }
+.storm-decor .decor-leaves { opacity:.56; animation:storm-branch 1.8s ease-in-out infinite alternate; }
+.decor-flowers { width:clamp(190px,22vw,340px); right:-5%; bottom:-7%; opacity:.66; }
+.decor-butterflies { width:clamp(120px,15vw,230px); right:2%; top:18%; opacity:.58; animation:butterfly-drift 7s ease-in-out infinite alternate; }
+.decor-sparkles { width:clamp(110px,14vw,210px); left:3%; bottom:7%; opacity:.54; animation:sparkle-breathe 2.8s ease-in-out infinite alternate; }
+
+.magic-unicorn { position:relative; display:grid; place-items:center; width:clamp(170px,22vw,300px); margin:auto; z-index:2; }
+.magic-unicorn img { display:block; width:100%; height:auto; filter:drop-shadow(0 16px 20px #314d4630); user-select:none; }
+.hero-art .magic-unicorn.hero-unicorn { width:min(76%,390px); margin-top:-54px; z-index:2; animation:unicorn-float 5s ease-in-out infinite; }
+.story-art .magic-unicorn { width:min(68%,245px); }
+.story-art.lost .magic-unicorn { animation:vanish 2s both; }
+.celebration > .magic-unicorn { width:clamp(220px,30vw,390px); margin:28px auto 38px; animation:unicorn-float 5s ease-in-out infinite; }
+
+.birthday-sprite { display:block; position:absolute; background-image:url("Assets/magic/decos.png"); background-repeat:no-repeat; pointer-events:none; }
+.birthday-balloons-asset { width:145px; height:160px; top:12px; right:8px; z-index:4; background-size:768px 512px; background-position:-418px -44px; animation:unicorn-float 4.5s ease-in-out infinite; }
+.birthday-cake-asset { width:145px; height:132px; left:5px; bottom:-8px; z-index:4; background-size:768px 512px; background-position:-4px -54px; }
+.birthday-cake-asset .candle { display:none; }
+.birthday-bunting { width:152px; height:82px; top:16px; right:4%; background-size:768px 512px; background-position:-550px -82px; opacity:.78; }
+
+.treasure-art { min-height:250px; }
+.treasure-image { width:clamp(190px,26vw,340px); height:auto; filter:drop-shadow(0 18px 18px #6e4b1738); animation:treasure-glow 3s ease-in-out infinite alternate; }
+
+body.birthday-mode {
+  background:
+    linear-gradient(180deg,#fffdf0d9,#f5fff7e8),
+    url("Assets/magic/forest-day.png.png") center / cover fixed;
+}
+.birthday-finale { position:relative; z-index:1; }
+.birthday-finale::before,.birthday-finale::after { content:''; position:fixed; z-index:-1; pointer-events:none; background-repeat:no-repeat; background-size:contain; opacity:.62; }
+.birthday-finale::before { width:clamp(210px,25vw,390px); aspect-ratio:1; top:-6%; left:-5%; background-image:url("Assets/magic/leaves-branch.png.png"); }
+.birthday-finale::after { width:clamp(190px,22vw,340px); aspect-ratio:1; right:-4%; bottom:-7%; background-image:url("Assets/magic/flowers.png.png"); }
+.birthday-friends { padding:clamp(22px,3vw,38px); border:1px solid #ffffffd9; border-radius:30px; background:#fffdf4d9; box-shadow:0 20px 55px #335d4918; backdrop-filter:blur(8px); }
+
+@keyframes branch-sway { to { transform:rotate(2.5deg) translateY(5px); } }
+@keyframes storm-branch { to { transform:rotate(8deg) translate(12px,6px); } }
+@keyframes butterfly-drift { to { transform:translate(-16px,14px) rotate(-3deg); } }
+@keyframes sparkle-breathe { to { opacity:.82; transform:scale(1.05) rotate(2deg); } }
+@keyframes unicorn-float { 50% { transform:translateY(-9px); } }
+@keyframes treasure-glow { to { filter:drop-shadow(0 18px 25px #f2c34c85); transform:translateY(-5px); } }
+
+@media(max-width:700px) {
+  .decor-leaves { width:210px; opacity:.45; }
+  .decor-flowers { width:190px; opacity:.42; }
+  .decor-butterflies { width:115px; top:25%; opacity:.4; }
+  .decor-sparkles { width:105px; opacity:.4; }
+  .birthday-bunting { transform:scale(.75); transform-origin:top right; right:1%; }
+  .hero-art .magic-unicorn.hero-unicorn { width:min(78%,320px); margin-top:-38px; }
+  .birthday-balloons-asset { transform:scale(.78); transform-origin:top right; }
+  .birthday-cake-asset { transform:scale(.8); transform-origin:bottom left; }
+  .birthday-finale::before,.birthday-finale::after { opacity:.35; }
+}
+
+@media(prefers-reduced-motion:reduce) {
+  .decor-leaves,.decor-butterflies,.decor-sparkles,.magic-unicorn,.birthday-balloons-asset,.treasure-image { animation:none!important; }
+}
