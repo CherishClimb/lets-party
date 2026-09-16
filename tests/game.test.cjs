@@ -46,6 +46,7 @@ function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok') 
     html:()=>elements['#app'].innerHTML,
     serialized:()=>stored,
     audio:()=>audioInstances[0],
+    music:()=>audioInstances[1],
     audioCount:()=>audioInstances.length
   };
 }
@@ -143,7 +144,7 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   assert.match(h.html(),/Alle drei Zauberkräfte sind sicher/);assert.equal(h.timerCount(),0);
   assert.doesNotMatch(h.html(),/mascot unicorn|Zaubertrank|Zauberschokolade|Marshmallow/);
   h.click('go',{screen:'finale'});
-  for(let i=0;i<h.context.CONTENT.finale.length;i++) h.tick();
+  for(let i=0;i<h.context.CONTENT.finale.length;i++) i<3?h.click('sceneNext'):h.tick();
   assert.equal(h.state().currentScreen,'found');assert.match(h.html(),/FINDET MICH!/);
   assert.doesNotMatch(h.html(),/Zaubertrank|Zauberschokolade|Marshmallow/);
   h.click('found');assert.equal(h.state().currentScreen,'rescued');
@@ -271,10 +272,12 @@ test('version 1 saves migrate without losing children, teams or already earned p
   assert.equal(loaded.children[2].name,'Lucy');assert.equal(G.earned(loaded,'octopus',0),true);
   assert.equal(loaded.clueRevealed,false);
 });
-test('six intro scenes have central audio mappings and valid story transitions',()=>{
+test('story narration and background music have central mappings',()=>{
   const h=harness(),c=h.context.CONTENT;
   assert.equal(c.intro.length,6);assert.equal(c.storyAudio.intro.length,6);
   c.storyAudio.intro.forEach((src,i)=>assert.equal(src,'Assets/Audio/story/scene-'+String(i+1).padStart(2,'0')+'.mp3'));
+  assert.deepEqual(Array.from(c.storyAudio.finale),['Assets/Audio/story/final-01.mp3','Assets/Audio/story/final-02.mp3','Assets/Audio/story/final-03.mp3']);
+  assert.deepEqual({...c.backgroundMusic},{ambient:'Assets/Audio/story/ambient.mp3',storm:'Assets/Audio/story/storm.mp3',final:'Assets/Audio/story/final.mp3'});
   for(const [from,to] of Object.entries(c.storyNext)) {
     assert.ok(Array.isArray(c[from]),from);assert.ok(c.screens[to],to);
   }
@@ -283,7 +286,7 @@ test('one narration player follows intro scenes and supports pause, resume and r
   const h=harness();fill(h);h.click('go',{screen:'intro'});
   assert.equal(h.context.StoryNarration.snapshot().id,'intro:1');
   assert.equal(h.context.StoryNarration.snapshot().status,'playing');
-  assert.match(h.audio().src,/scene-01\.mp3$/);assert.equal(h.timerCount(),0);assert.equal(h.audioCount(),1);
+  assert.match(h.audio().src,/scene-01\.mp3$/);assert.equal(h.timerCount(),0);assert.equal(h.audioCount(),2);
   assert.match(h.html(),/Geschichte starten/);assert.match(h.html(),/Nochmal h/);
   h.audio().currentTime=4;h.click('narrationToggle');assert.equal(h.context.StoryNarration.snapshot().status,'paused');assert.equal(h.audio().currentTime,4);
   h.click('narrationToggle');assert.equal(h.context.StoryNarration.snapshot().status,'playing');
@@ -298,14 +301,38 @@ test('blocked autoplay can be unlocked without changing the scene',async()=>{
   const h=harness(undefined,false,null,'blocked');fill(h);h.click('go',{screen:'intro'});
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(h.context.StoryNarration.snapshot().status,'blocked');assert.equal(h.context.StoryNarration.snapshot().id,'intro:1');
-  h.audio().mode='ok';h.click('narrationStart');await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(h.context.StoryNarration.snapshot().status,'playing');assert.equal(h.context.StoryNarration.snapshot().id,'intro:1');
+  h.audio().mode='ok';h.music().mode='ok';h.click('narrationStart');await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.context.StoryNarration.snapshot().status,'playing');assert.equal(h.context.StoryNarration.snapshot().id,'intro:1');assert.equal(h.context.BackgroundMusic.snapshot().status,'playing');
 });
 test('missing narration stays hidden and never blocks story navigation',async()=>{
   const h=harness(undefined,false,null,'missing');fill(h);h.click('go',{screen:'intro'});
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(h.context.StoryNarration.snapshot().status,'missing');assert.match(h.html(),/narration-controls" hidden/);
   h.click('sceneNext');assert.equal(h.context.StoryNarration.snapshot().id,'intro:2');assert.equal(h.state().currentScreen,'intro');
+});
+test('three finale narration clips use the existing finale scene IDs and never auto-advance',()=>{
+  const s=finishState();s.currentScreen='waiting';const h=harness(JSON.stringify(s));
+  h.click('go',{screen:'finale'});
+  assert.equal(h.context.StoryNarration.snapshot().id,'finale:1');assert.match(h.audio().src,/final-01\.mp3$/);assert.equal(h.timerCount(),0);
+  h.audio().emit('ended');assert.equal(h.context.StoryNarration.snapshot().id,'finale:1');assert.equal(h.timerCount(),0);
+  h.click('sceneNext');assert.equal(h.context.StoryNarration.snapshot().id,'finale:2');assert.match(h.audio().src,/final-02\.mp3$/);assert.equal(h.timerCount(),0);
+  h.click('sceneNext');assert.equal(h.context.StoryNarration.snapshot().id,'finale:3');assert.match(h.audio().src,/final-03\.mp3$/);assert.equal(h.timerCount(),0);
+  h.audio().emit('ended');assert.equal(h.context.StoryNarration.snapshot().id,'finale:3');assert.equal(h.timerCount(),0);
+  h.click('sceneNext');assert.equal(h.context.StoryNarration.snapshot().status,'idle');assert.equal(h.timerCount(),1);
+});
+test('one looping music player follows restored story state and ducks under narration',async()=>{
+  const h=harness();assert.equal(h.context.BackgroundMusic.snapshot().id,'ambient');assert.equal(h.context.BackgroundMusic.snapshot().volume,.13);assert.equal(h.music().loop,true);
+  fill(h);h.click('go',{screen:'intro'});assert.equal(h.context.BackgroundMusic.snapshot().id,'ambient');assert.equal(h.context.BackgroundMusic.snapshot().volume,.08);
+  h.click('narrationToggle');assert.equal(h.context.BackgroundMusic.snapshot().volume,.13);
+  h.click('narrationToggle');h.click('sceneNext');h.click('sceneNext');h.click('sceneNext');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');assert.equal(h.context.BackgroundMusic.snapshot().volume,.08);
+  h.click('skip');assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');assert.equal(h.context.BackgroundMusic.snapshot().volume,.13);
+
+  const away=finishState();away.returnInvited=false;away.treasureFound=false;away.currentScreen='pinata';
+  assert.equal(harness(JSON.stringify(away)).context.BackgroundMusic.snapshot().id,'storm');
+  const returned=finishState();returned.currentScreen='waiting';
+  assert.equal(harness(JSON.stringify(returned)).context.BackgroundMusic.snapshot().id,'final');
 });
 test('atmosphere follows storm and restored-magic story state',()=>{
   const intro=harness();fill(intro);intro.click('go',{screen:'reveal'});intro.click('go',{screen:'intro'});

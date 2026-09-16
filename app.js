@@ -1,7 +1,7 @@
 /* DOM rendering and interaction. All user-facing copy comes from CONTENT. */
 (function () {
 'use strict';
-const C = window.CONTENT, G = window.Game, P = window.PhotoStore, N = window.StoryNarration, U = C.ui;
+const C = window.CONTENT, G = window.Game, P = window.PhotoStore, N = window.StoryNarration, M = window.BackgroundMusic, U = C.ui;
 const app = document.querySelector('#app'), dialog = document.querySelector('#organizer');
 const STORAGE_KEY = 'unicorn-rescue-v1';
 let state = G.fresh(), storageError = '', presentation = false, scene = 0, timer = null, celebrationTimer = null, finalCelebrating = false, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0, lastStorm = null, memoryPhotos = [], photosReady = false;
@@ -127,6 +127,7 @@ function narrationControls() {
   return '<div class="narration-controls" hidden><span class="narration-label"><i aria-hidden="true">♪</i>'+esc(n.label)+'</span><div class="narration-actions">'+button(n.start,'narrationStart','','secondary narration-start')+button(n.pause,'narrationToggle','','secondary narration-toggle')+button(n.replay,'narrationReplay','','quiet narration-replay')+'</div></div>';
 }
 function updateNarrationUi(snapshot=N?.snapshot?.()) {
+  M?.setDucked?.(snapshot?.status==='playing');
   const controls=app.querySelector?.('.narration-controls'),target=currentNarration();
   if(!controls||!target||!snapshot||snapshot.id!==target.id) return;
   const unavailable=!snapshot.supported||['idle','loading','missing'].includes(snapshot.status);
@@ -143,6 +144,10 @@ function syncNarration() {
   if(!target) {N?.stop?.();return;}
   N?.open?.(target.id,target.src);
   updateNarrationUi();
+}
+function syncBackgroundMusic(flags=sceneFlags()) {
+  const id=flags.restored?'final':flags.storm?'storm':'ambient',src=C.backgroundMusic?.[id];
+  if(src) M?.open?.(id,src);
 }
 function activeVisual() {
   const scenes=C[state.currentScreen];
@@ -330,6 +335,7 @@ function render() {
   const view=views[screen]?views[screen]():/^level/.test(screen)?level(Number(screen.slice(-1))-1):story(screen);
   app.innerHTML=sceneDecor(flags,sunnyReturn)+view;
   syncNarration();
+  syncBackgroundMusic(flags);
   note(storageError);
   scheduleScene();
 
@@ -368,6 +374,7 @@ function resume() {
 document.addEventListener('click', event=>{
   const el=event.target.closest('[data-action]');
   if(!el || el.disabled) return;
+  if(M?.snapshot?.().status==='blocked') void M.play();
   switch(el.dataset.action) {
     case 'go': go(el.dataset.screen); break;
     case 'resume': resume(); break;
@@ -377,7 +384,7 @@ document.addEventListener('click', event=>{
     case 'photoRemove': void removeMemoryPhoto(el.dataset.photoId); break;
     case 'photoRemoveAll': void clearMemoryPhotos(true); break;
     case 'celebrate': replayFinalCelebration(); break;
-    case 'narrationStart': void N?.play?.(); break;
+    case 'narrationStart': void N?.play?.(); void M?.play?.(); break;
     case 'narrationToggle': N?.toggle?.(); break;
     case 'narrationReplay': N?.replay?.(); break;
     case 'close': dialog.close(); break;

@@ -92,5 +92,107 @@
     }
   }
 
+  class MusicController {
+    constructor() {
+      this.audio=typeof root.Audio==='function'?new root.Audio():null;
+      this.current={id:'',src:''};
+      this.pending=null;
+      this.status='idle';
+      this.ducked=false;
+      this.normalVolume=.13;
+      this.duckVolume=.08;
+      this.fadeToken=0;
+      this.changing=false;
+      if(!this.audio) return;
+      this.audio.preload='auto';
+      this.audio.loop=true;
+      this.audio.volume=this.normalVolume;
+      this.audio.addEventListener('playing',()=>{
+        if(!this.current.id) return;
+        this.status='playing';
+      });
+      this.audio.addEventListener('pause',()=>{
+        if(this.changing||!this.current.id) return;
+        this.status='paused';
+      });
+      this.audio.addEventListener('canplay',()=>{
+        if(!this.current.id||this.status!=='loading') return;
+        this.status='paused';
+      });
+      this.audio.addEventListener('error',()=>{
+        if(!this.current.id) return;
+        this.status='missing';
+      });
+    }
+    snapshot() { return {...this.current,status:this.status,supported:!!this.audio,volume:this.audio?.volume??0,ducked:this.ducked}; }
+    targetVolume() { return this.ducked?this.duckVolume:this.normalVolume; }
+    fadeTo(target,duration,onDone=()=>{}) {
+      if(!this.audio) return;
+      const token=++this.fadeToken,start=this.audio.volume,raf=root.requestAnimationFrame?.bind(root);
+      if(!raf||duration<=0) {this.audio.volume=target;onDone();return;}
+      let started=null;
+      const frame=time=>{
+        if(token!==this.fadeToken) return;
+        if(started===null) started=time;
+        const progress=Math.min(1,(time-started)/duration);
+        this.audio.volume=start+(target-start)*progress;
+        if(progress<1) raf(frame); else onDone();
+      };
+      raf(frame);
+    }
+    open(id,src) {
+      if(!this.audio||!id||!src) return;
+      if((this.current.id===id&&this.current.src===src)||(this.pending?.id===id&&this.pending?.src===src)) {
+        if(this.status==='blocked') void this.play();
+        return;
+      }
+      this.pending={id,src};
+      const activate=fadeIn=>{
+        const target=this.pending;
+        if(!target) return;
+        this.pending=null;
+        this.changing=true;
+        this.audio.pause();
+        try {this.audio.currentTime=0;} catch {}
+        this.current=target;
+        this.status='loading';
+        this.audio.src=target.src;
+        this.audio.preload='auto';
+        this.audio.loop=true;
+        this.audio.volume=fadeIn?0:this.targetVolume();
+        this.audio.load();
+        this.changing=false;
+        void this.play(fadeIn);
+      };
+      if(this.current.id&&this.status==='playing') this.fadeTo(0,350,()=>activate(true));
+      else {this.fadeToken++;activate(false);}
+    }
+    async play(fadeIn=false) {
+      if(!this.audio||!this.current.id||this.status==='missing') return false;
+      const requestId=this.current.id;
+      try {
+        const result=this.audio.play();
+        if(result&&typeof result.then==='function') await result;
+        if(this.current.id!==requestId) return false;
+        this.status='playing';
+        if(fadeIn) this.fadeTo(this.targetVolume(),350);
+        else this.audio.volume=this.targetVolume();
+        return true;
+      } catch(error) {
+        if(this.current.id!==requestId) return false;
+        this.status=error?.name==='NotAllowedError'?'blocked':'missing';
+        return false;
+      }
+    }
+    setDucked(ducked) {
+      this.ducked=!!ducked;
+      if(!this.audio) return;
+      if(this.pending) return;
+      if(this.status==='playing') this.fadeTo(this.targetVolume(),250);
+      else this.audio.volume=this.targetVolume();
+    }
+  }
+
   root.StoryNarration=new NarrationController();
+  root.BackgroundMusic=new MusicController();
 })(globalThis);

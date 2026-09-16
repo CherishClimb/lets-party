@@ -370,7 +370,17 @@ window.CONTENT = {
       "Assets/Audio/story/scene-04.mp3",
       "Assets/Audio/story/scene-05.mp3",
       "Assets/Audio/story/scene-06.mp3"
+    ],
+    "finale": [
+      "Assets/Audio/story/final-01.mp3",
+      "Assets/Audio/story/final-02.mp3",
+      "Assets/Audio/story/final-03.mp3"
     ]
+  },
+  "backgroundMusic": {
+    "ambient": "Assets/Audio/story/ambient.mp3",
+    "storm": "Assets/Audio/story/storm.mp3",
+    "final": "Assets/Audio/story/final.mp3"
   },
   "narration": {
     "label": "🔊 Geschichte",
