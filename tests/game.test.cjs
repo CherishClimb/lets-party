@@ -7,7 +7,7 @@ const path = require('node:path');
 const G = require('../game.js');
 const root = path.resolve(__dirname,'..');
 
-function harness(saved, storageThrows=false) {
+function harness(saved, storageThrows=false, photoRecords=null) {
   const listeners = {}, timers = new Map(); let tid=0, stored=saved;
   const element = () => ({innerHTML:'',textContent:'',open:false,focus(){},classList:{toggle(){},add(){}},handlers:{},addEventListener(type,fn){this.handlers[type]=fn;}});
   const elements = Object.fromEntries(['#app','#header','#footer','#notice','#organizer','.reward'].map(k=>[k,element()]));
@@ -17,11 +17,14 @@ function harness(saved, storageThrows=false) {
   const context = {
     console, window:null, document:{title:'',body:element(),querySelector:s=>elements[s],addEventListener:(type,fn)=>listeners[type]=fn},
     localStorage:{getItem:()=>stored,setItem:(key,value)=>{if(storageThrows) throw Error('blocked');stored=value;}},
-    setTimeout:fn=>{timers.set(++tid,fn);return tid;},clearTimeout:id=>timers.delete(id),scrollTo(){}
+    setTimeout:fn=>{timers.set(++tid,fn);return tid;},clearTimeout:id=>timers.delete(id),scrollTo(){},
+    URL:{createObjectURL:blob=>'blob:'+blob.id,revokeObjectURL(){}}
   };
   context.window=context;
   vm.createContext(context);
-  for(const name of ['content.js','game.js','app.js']) vm.runInContext(fs.readFileSync(path.join(root,name),'utf8'),context,{filename:name});
+  for(const name of ['content.js','game.js','photo-store.js']) vm.runInContext(fs.readFileSync(path.join(root,name),'utf8'),context,{filename:name});
+  if(photoRecords) context.PhotoStore.list=()=>Promise.resolve(photoRecords);
+  vm.runInContext(fs.readFileSync(path.join(root,'app.js'),'utf8'),context,{filename:'app.js'});
   return {
     context,elements,
     click(action,data={}) {listeners.click({target:{closest:()=>({dataset:{action,...data},disabled:false})}});},
@@ -139,8 +142,8 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   h.click('rewardNext');assert.equal(h.state().currentScreen,'done');
   assert.match(h.html(),/Alles Gute zum 6. Geburtstag, Lucy!/);
   assert.match(h.html(),/Assets\/lucy-unicorn-cutout.png/);
-  assert.match(h.html(),/Emma/);assert.match(h.html(),/Noah/);assert.match(h.html(),/Mia/);
-  assert.match(h.html(),/Unsere Helden:/);
+  assert.doesNotMatch(h.html(),/Emma|Noah|Mia|Unsere Helden:/);
+  assert.match(h.html(),/final-cake/);
   assert.doesNotMatch(h.html(),/Gemeinsam seid ihr magisch/);
 });
 test('refresh restores names, gesture, team assignments, completion and current screen',()=>{
@@ -168,9 +171,20 @@ test('organizer shortcuts cannot bypass finale and rescue requirements',()=>{
   assert.equal(full.state().currentScreen,'home');
 });
 test('reset is confirmed and clears the entire setup and progress',()=>{
-  const h=harness();fill(h);h.click('reset');assert.equal(h.state().children[0].name,'Emma');
+  const h=harness();let photosCleared=false;h.context.PhotoStore.clear=()=>{photosCleared=true;return Promise.resolve();};
+  fill(h);h.click('reset');assert.equal(h.state().children[0].name,'Emma');
   h.click('resetConfirm');assert.ok(h.state().children.every(c=>!c.name));
-  assert.equal(h.state().currentScreen,'home');
+  assert.equal(h.state().currentScreen,'home');assert.equal(photosCleared,true);
+});
+test('organizer opens memory photos without changing story progress',()=>{
+  const h=harness(JSON.stringify(G.fresh()));const before=h.serialized();
+  h.click('organizer');assert.match(h.elements['#organizer'].innerHTML,/📷 Erinnerungsfotos/);assert.match(h.elements['#organizer'].innerHTML,/0\/3/);
+  h.click('photos');
+  assert.match(h.elements['#organizer'].innerHTML,/Bis zu 3 Fotos für die Geburtstagsseite auswählen/);
+  assert.match(h.elements['#organizer'].innerHTML,/accept="image\/jpeg,image\/png,image\/webp/);
+  assert.match(h.elements['#organizer'].innerHTML,/multiple data-photo-input/);
+  assert.equal(h.serialized(),before);assert.equal(h.state().currentScreen,'home');
+  assert.equal(h.context.PhotoStore.MAX_EDGE,1400);
 });
 test('invalid saves and unavailable storage show useful messages without stopping gameplay',()=>{
   const corrupt=harness('{bad');assert.match(corrupt.elements['#notice'].textContent,/nicht gelesen/);
@@ -270,12 +284,11 @@ test('atmosphere follows storm and restored-magic story state',()=>{
   const restored=finishState();restored.currentScreen='waiting';
   assert.match(harness(JSON.stringify(restored)).html(),/day-decor/);
 });
-test('final birthday image uses the transparent cutout and participant names are safely rendered',()=>{
+test('final birthday image uses the transparent cutout and omits participant names',()=>{
   const s=finishState();s.rescued=true;s.currentScreen='done';
   s.children[1].name='<script>alert(1)</script>';s.children[2].name='   ';
   const h=harness(JSON.stringify(s));
-  assert.match(h.html(),/Emma/);assert.match(h.html(),/&lt;script&gt;/);
-  assert.doesNotMatch(h.html(),/<script>/);
+  assert.doesNotMatch(h.html(),/Emma|&lt;script&gt;|<script>|Unsere Helden/);
   const imagePath=h.context.CONTENT.done.image;
   assert.ok(fs.existsSync(path.join(root,imagePath)));
   const png=fs.readFileSync(path.join(root,imagePath));
@@ -291,12 +304,25 @@ test('finishing team rewards resumes at the final birthday image',()=>{
   assert.equal(h.state().currentScreen,'done');
 });
 
-test('birthday screen contains only the requested greeting, heroes heading and participating names',()=>{
+test('birthday screen without photos contains the greeting, illustration and cake only',()=>{
   const s=finishState();s.rescued=true;s.currentScreen='done';
   s.children[1].name='Lucy';s.children[2].name='   ';
   const h=harness(JSON.stringify(s));
   const visible=h.html().replace(/<[^>]*>/g,'');
-  assert.equal(visible,'Alles Gute zum 6. Geburtstag, Lucy!Unsere Helden:EmmaLucy');
+  assert.equal(visible,'Alles Gute zum 6. Geburtstag, Lucy!');
+  assert.match(h.html(),/birthday-layout no-photos/);assert.match(h.html(),/final-cake/);
   assert.equal(h.elements['#footer'].innerHTML,'');
   assert.doesNotMatch(h.elements['#header'].innerHTML,/class="brand"|Automatisch gespeichert/);
+});
+
+test('one, two and three stored photos use their intended final-page collage layouts',async()=>{
+  const s=finishState();s.rescued=true;s.birthdayComplete=true;s.currentScreen='done';
+  for(let count=1;count<=3;count++) {
+    const records=Array.from({length:count},(_,i)=>({id:'photo-'+i,createdAt:i,blob:{id:i}}));
+    const h=harness(JSON.stringify(s),false,records);
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.match(h.html(),new RegExp('photo-count-'+count));
+    assert.equal((h.html().match(/class="memory-photo"/g)||[]).length,count);
+    assert.doesNotMatch(h.html(),/Unsere Helden|data-photo-input/);
+  }
 });

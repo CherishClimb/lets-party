@@ -247,7 +247,7 @@ window.CONTENT = {
     "finish": "Zum Geburtstagsbild",
     "reset": "Spiel zurücksetzen",
     "resetQuestion": "Wirklich alles zurücksetzen?",
-    "resetDetail": "Alle Namen, Teams, Teamzeichen und Fortschritte werden gelöscht.",
+    "resetDetail": "Alle Namen, Teams, Teamzeichen, Fortschritte und Erinnerungsfotos werden gelöscht.",
     "cancel": "Abbrechen",
     "confirmReset": "Ja, alles zurücksetzen",
     "edit": "Namen & Teams bearbeiten",
@@ -490,9 +490,27 @@ window.CONTENT = {
   },
   "done": {
     "title": "Alles Gute zum 6. Geburtstag, Lucy!",
-    "friendsHeading": "Unsere Helden:",
     "image": "Assets/lucy-unicorn-cutout.png",
     "imageAlt": "Lucy zusammen mit dem Einhorn"
+  },
+  "memoryPhotos": {
+    "menu": "📷 Erinnerungsfotos",
+    "title": "Erinnerungsfotos",
+    "intro": "Bis zu 3 Fotos für die Geburtstagsseite auswählen",
+    "status": "{n}/3",
+    "complete": "{n}/3 ✓",
+    "choose": "Fotos auswählen",
+    "add": "Weitere Fotos",
+    "replace": "Ersetzen",
+    "remove": "Entfernen",
+    "removeAll": "Alle Fotos entfernen",
+    "processing": "Fotos werden vorbereitet …",
+    "ready": "Erinnerungsfotos gespeichert.",
+    "maxReached": "Es können höchstens 3 Fotos gespeichert werden.",
+    "unsupported": "Bitte JPG-, PNG- oder WebP-Fotos auswählen.",
+    "saveFailed": "Die Fotos konnten auf diesem Gerät nicht gespeichert werden.",
+    "empty": "Noch keine Erinnerungsfotos ausgewählt.",
+    "alt": "Erinnerungsfoto {n}"
   },
   "destinationWords": {
     "parts": [

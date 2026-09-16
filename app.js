@@ -1,10 +1,10 @@
 /* DOM rendering and interaction. All user-facing copy comes from CONTENT. */
 (function () {
 'use strict';
-const C = window.CONTENT, G = window.Game, U = C.ui;
+const C = window.CONTENT, G = window.Game, P = window.PhotoStore, U = C.ui;
 const app = document.querySelector('#app'), dialog = document.querySelector('#organizer');
 const STORAGE_KEY = 'unicorn-rescue-v1';
-let state = G.fresh(), storageError = '', presentation = false, scene = 0, timer = null, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0, lastStorm = null;
+let state = G.fresh(), storageError = '', presentation = false, scene = 0, timer = null, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0, lastStorm = null, memoryPhotos = [], photosReady = false;
 const warmupPoses = Object.fromEntries(C.teams.map(t=>[t.id,[false,false,false]]));
 const sequence = ['home','setup','reveal','intro','warmup','level1','transition2','level2','transition3','level3','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -43,6 +43,77 @@ function journeyPowers() {
 function heading(title, text='', eyebrow='') { return '<div class="page-heading">'+(eyebrow?'<p class="eyebrow">'+esc(eyebrow)+'</p>':'')+'<h1>'+esc(title)+'</h1>'+(text?'<p class="lead">'+esc(text)+'</p>':'')+'</div>'; }
 function note(text) { document.querySelector('#notice').textContent = text; }
 function save() { try { localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); storageError=''; } catch { storageError=U.saveFailed; note(storageError); } }
+function photoStatus() {
+  const copy=C.memoryPhotos, count=memoryPhotos.length;
+  return fmt(count===3?copy.complete:copy.status,{n:count});
+}
+function releasePhotoUrls() {
+  if(typeof URL==='undefined'||typeof URL.revokeObjectURL!=='function') return;
+  memoryPhotos.forEach(photo=>{if(photo.url) URL.revokeObjectURL(photo.url);});
+}
+function setMemoryPhotos(records) {
+  const changed=records.length!==memoryPhotos.length||records.some((record,i)=>record.id!==memoryPhotos[i]?.id||record.blob!==memoryPhotos[i]?.blob);
+  releasePhotoUrls();
+  memoryPhotos=records.map(record=>({
+    ...record,
+    url:typeof URL!=='undefined'&&typeof URL.createObjectURL==='function'?URL.createObjectURL(record.blob):''
+  }));
+  return changed;
+}
+async function refreshMemoryPhotos(updateView=true) {
+  try {
+    const changed=setMemoryPhotos(P?await P.list():[]);
+    photosReady=true;
+    if(updateView&&changed&&state.currentScreen==='done') render();
+    if(updateView&&dialog.open&&dialog.innerHTML.includes('photo-manager')) openPhotoManager();
+  } catch {
+    photosReady=true;
+    if(dialog.open&&dialog.innerHTML.includes('photo-manager')) openPhotoManager(C.memoryPhotos.saveFailed);
+  }
+}
+async function processPhotoFiles(fileList,replaceId='') {
+  const copy=C.memoryPhotos, files=Array.from(fileList||[]);
+  let truncated=false;
+  if(!files.length) return;
+  if(!P||!P.supported()) {note(copy.saveFailed);return;}
+  const valid=files.filter(file=>P.allowedTypes.has(file.type));
+  if(!valid.length) {note(copy.unsupported);return;}
+  note(copy.processing);
+  try {
+    if(replaceId) {
+      const existing=memoryPhotos.find(photo=>photo.id===replaceId);
+      if(!existing) return;
+      const blob=await P.prepare(valid[0]);
+      await P.save(blob,{id:existing.id,createdAt:existing.createdAt});
+    } else {
+      const remaining=Math.max(0,3-memoryPhotos.length);
+      if(!remaining) {note(copy.maxReached);return;}
+      truncated=valid.length>remaining;
+      for(const file of valid.slice(0,remaining)) await P.save(await P.prepare(file));
+    }
+    await refreshMemoryPhotos(false);
+    if(dialog.open) openPhotoManager();
+    if(state.currentScreen==='done') render();
+    note(truncated?copy.maxReached:copy.ready);
+  } catch(error) {
+    note(error?.message==='unsupported-photo-type'?copy.unsupported:copy.saveFailed);
+  }
+}
+async function removeMemoryPhoto(id) {
+  try {
+    await P?.remove(id);
+    await refreshMemoryPhotos(false);
+    if(dialog.open) openPhotoManager();
+    if(state.currentScreen==='done') render();
+  } catch { note(C.memoryPhotos.saveFailed); }
+}
+function clearMemoryPhotos(updateView=true) {
+  releasePhotoUrls();memoryPhotos=[];photosReady=true;
+  const clearing=P?.clear?.().catch(()=>note(C.memoryPhotos.saveFailed));
+  if(updateView&&dialog.open) openPhotoManager();
+  if(updateView&&state.currentScreen==='done') render();
+  return clearing;
+}
 try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) state=G.normalize(JSON.parse(saved)); } catch { storageError=U.corruptSave; }
 C.teams.forEach(t=>{ if(state.teams[t.id].gesture!==null) warmupPoses[t.id].fill(true); });
 document.title = C.app.title;
@@ -206,8 +277,9 @@ function rescued() {
   return '<section class="celebration">'+heading(C.rescued.title,C.rescued.text)+mascot('unicorn')+'<div class="actions">'+nav(U.revealRewards,'rewards')+'</div></section>';
 }
 function done() {
-  const participants=state.children.filter(c=>c.name.trim());
-  return '<section class="birthday-finale">'+heading(C.done.title)+'<div class="birthday-layout"><img class="birthday-image" src="'+esc(C.done.image)+'" alt="'+esc(C.done.imageAlt)+'"><aside class="birthday-friends"><h2>'+esc(C.done.friendsHeading)+'</h2><ul class="'+(participants.length>6?'many':'')+'">'+participants.map(c=>'<li>'+esc(c.name)+'</li>').join('')+'</ul></aside></div></section>';
+  const photoCount=memoryPhotos.length;
+  const collage=photoCount?'<section class="memory-collage photo-count-'+photoCount+'" aria-label="'+esc(C.memoryPhotos.title)+'">'+memoryPhotos.map((photo,i)=>'<figure class="memory-photo"><img src="'+esc(photo.url)+'" alt="'+esc(fmt(C.memoryPhotos.alt,{n:i+1}))+'"></figure>').join('')+'</section>':'';
+  return '<section class="birthday-finale">'+heading(C.done.title)+'<div class="birthday-layout '+(photoCount?'has-photos':'no-photos')+'"><div class="birthday-portrait"><img class="birthday-image" src="'+esc(C.done.image)+'" alt="'+esc(C.done.imageAlt)+'"><span class="birthday-sprite final-cake" aria-hidden="true"></span></div>'+collage+'</div></section>';
 }
 function render() {
   cancelTimer();
@@ -222,13 +294,21 @@ function render() {
   scheduleScene();
 
 }
+function openPhotoManager(error='') {
+  cancelTimer();
+  const copy=C.memoryPhotos, status=photoStatus();
+  const thumbnails=memoryPhotos.map((photo,i)=>'<article class="photo-thumb"><img src="'+esc(photo.url)+'" alt="'+esc(fmt(copy.alt,{n:i+1}))+'"><div class="photo-thumb-actions"><label class="secondary photo-file-button">'+esc(copy.replace)+'<input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" data-photo-replace="'+esc(photo.id)+'"></label>'+button(copy.remove,'photoRemove','data-photo-id="'+esc(photo.id)+'"','quiet')+'</div></article>').join('');
+  const picker=memoryPhotos.length<3?'<label class="primary photo-file-button">'+esc(memoryPhotos.length?copy.add:copy.choose)+'<input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple data-photo-input></label>':'';
+  dialog.innerHTML='<section class="photo-manager"><div class="dialog-heading"><div><p class="eyebrow">'+esc(status)+'</p><h2>'+esc(copy.title)+'</h2></div>'+button(U.close,'close','','secondary')+'</div><p>'+esc(copy.intro)+'</p>'+(error?'<p class="photo-error">'+esc(error)+'</p>':'')+(photosReady?(thumbnails?'<div class="photo-thumbnails">'+thumbnails+'</div>':'<p class="muted">'+esc(copy.empty)+'</p>'):'<p class="muted">'+esc(copy.processing)+'</p>')+'<div class="actions">'+picker+(memoryPhotos.length?button(copy.removeAll,'photoRemoveAll','','danger'):'')+button(U.back,'organizer','','secondary')+'</div></section>';
+  if(!dialog.open) dialog.showModal();
+}
 function openOrganizer(reset=false) {
   cancelTimer();
   if(reset) {
     dialog.innerHTML='<h2>'+esc(U.resetQuestion)+'</h2><p>'+esc(U.resetDetail)+'</p><div class="actions">'+button(U.cancel,'organizer','','secondary')+button(U.confirmReset,'resetConfirm','','danger')+'</div>';
   } else {
     const idx=sequence.indexOf(state.currentScreen==='award'?'level'+(state.award.level+1):state.currentScreen), prev=sequence[Math.max(0,idx-1)], next=sequence[idx+1];
-    dialog.innerHTML='<div class="dialog-heading"><h2>'+esc(U.organizer)+'</h2>'+button(U.close,'close','','secondary')+'</div><div class="actions">'+nav(U.back,prev,'secondary')+(next?nav(U.next,next,'secondary',!G.canVisit(state,next)):'')+'</div><h3>'+esc(U.jump)+'</h3><div class="jump-grid">'+['home','reveal','level1','level2','level3','destination','pinata','treasure','returnMessage','waiting','finale','progress'].map(s=>nav(C.screens[s],s,'secondary',!G.canVisit(state,s))).join('')+'</div><div class="actions">'+nav(U.edit,'setup','quiet')+nav(U.replayIntro,'intro','quiet')+nav(U.replayFinale,'finale','quiet',!G.canVisit(state,'finale'))+'</div><h3>'+esc(U.completions)+'</h3><div class="completion-editor">'+C.teams.map(t=>'<fieldset><legend>'+esc(t.name)+'</legend>'+C.powers.map((p,i)=>'<label><input type="checkbox" data-mark-team="'+t.id+'" data-mark-level="'+i+'"'+(state.teams[t.id].completedLevels[i]?' checked':'')+(!G.levelOpen(state,i)&&!state.teams[t.id].completedLevels[i]?' disabled':'')+'>'+p.icon+' '+esc(p.name)+'</label>').join('')+'</fieldset>').join('')+'</div><details><summary>'+esc(U.answers)+'</summary>'+C.teams.map(t=>'<p>'+esc(t.name)+' → <strong>'+esc(t.word)+'</strong></p>').join('')+'</details><hr>'+button(U.reset,'reset','','danger');
+    dialog.innerHTML='<div class="dialog-heading"><h2>'+esc(U.organizer)+'</h2>'+button(U.close,'close','','secondary')+'</div><button class="organizer-photo-button" data-action="photos"><span>'+esc(C.memoryPhotos.menu)+'</span><strong>'+esc(photoStatus())+'</strong></button><div class="actions">'+nav(U.back,prev,'secondary')+(next?nav(U.next,next,'secondary',!G.canVisit(state,next)):'')+'</div><h3>'+esc(U.jump)+'</h3><div class="jump-grid">'+['home','reveal','level1','level2','level3','destination','pinata','treasure','returnMessage','waiting','finale','progress'].map(s=>nav(C.screens[s],s,'secondary',!G.canVisit(state,s))).join('')+'</div><div class="actions">'+nav(U.edit,'setup','quiet')+nav(U.replayIntro,'intro','quiet')+nav(U.replayFinale,'finale','quiet',!G.canVisit(state,'finale'))+'</div><h3>'+esc(U.completions)+'</h3><div class="completion-editor">'+C.teams.map(t=>'<fieldset><legend>'+esc(t.name)+'</legend>'+C.powers.map((p,i)=>'<label><input type="checkbox" data-mark-team="'+t.id+'" data-mark-level="'+i+'"'+(state.teams[t.id].completedLevels[i]?' checked':'')+(!G.levelOpen(state,i)&&!state.teams[t.id].completedLevels[i]?' disabled':'')+'>'+p.icon+' '+esc(p.name)+'</label>').join('')+'</fieldset>').join('')+'</div><details><summary>'+esc(U.answers)+'</summary>'+C.teams.map(t=>'<p>'+esc(t.name)+' → <strong>'+esc(t.word)+'</strong></p>').join('')+'</details><hr>'+button(U.reset,'reset','','danger');
   }
   if(!dialog.open) dialog.showModal();
 }
@@ -253,9 +333,12 @@ document.addEventListener('click', event=>{
     case 'resume': resume(); break;
     case 'presentation': presentation=!presentation; chrome(); break;
     case 'organizer': openOrganizer(); break;
+    case 'photos': openPhotoManager(); if(!photosReady) void refreshMemoryPhotos(); break;
+    case 'photoRemove': void removeMemoryPhoto(el.dataset.photoId); break;
+    case 'photoRemoveAll': void clearMemoryPhotos(true); break;
     case 'close': dialog.close(); break;
     case 'reset': openOrganizer(true); break;
-    case 'resetConfirm': state=G.fresh(); C.teams.forEach(t=>warmupPoses[t.id].fill(false)); warmupTeam=0; returnScreen='home'; presentation=false; go('home'); note(U.resetDone); break;
+    case 'resetConfirm': clearMemoryPhotos(false); state=G.fresh(); C.teams.forEach(t=>warmupPoses[t.id].fill(false)); warmupTeam=0; returnScreen='home'; presentation=false; go('home'); note(U.resetDone); break;
     case 'gesture': state.teams[el.dataset.team].gesture=Number(el.dataset.index); save(); render(); break;
     case 'warmupTeam': warmupTeam=Math.max(0,Math.min(2,Number(el.dataset.index))); render(); break;
     case 'poseDone': {
@@ -288,6 +371,8 @@ document.addEventListener('input',event=>{
 });
 document.addEventListener('change',event=>{
   const el=event.target;
+  if(el.dataset.photoInput!==undefined) {void processPhotoFiles(el.files);el.value='';return;}
+  if(el.dataset.photoReplace!==undefined) {void processPhotoFiles(el.files,el.dataset.photoReplace);el.value='';return;}
   if(el.dataset.child!==undefined) {
     const c=state.children[Number(el.dataset.child)]; c[el.dataset.field]=el.value; save();
     if(el.dataset.field==='teamId') { render(); }
@@ -302,4 +387,5 @@ document.addEventListener('change',event=>{
 });
 dialog.addEventListener('close',()=>scheduleScene());
 render();
+void refreshMemoryPhotos();
 })();
