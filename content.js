@@ -39,10 +39,10 @@ window.CONTENT = {
         "crop": [975, 430, 561, 594]
       },
       "reward": {
-        "icon": "🥤",
-        "name": "Besonderer Zaubertrank",
-        "unlock": "Die kleinen Monster haben ihren ZAUBERTRANK freigeschaltet!",
-        "text": "Euer besonderer magischer Geburtstagstrank."
+        "icon": "🧃",
+        "name": "Zaubertrank",
+        "unlock": "Zaubertrank gefunden!",
+        "text": "Für alle Kinder."
       }
     },
     {
@@ -66,9 +66,9 @@ window.CONTENT = {
       },
       "reward": {
         "icon": "🍫",
-        "name": "Besondere Zauberschokolade",
-        "unlock": "Die kleinen Oktopusse haben ihre ZAUBERSCHOKOLADE freigeschaltet!",
-        "text": "Eine besondere Schokolade für euer Rettungsteam."
+        "name": "Schoko-Schatz",
+        "unlock": "Schoko-Schatz gefunden!",
+        "text": "Für alle Kinder."
       }
     },
     {
@@ -91,10 +91,10 @@ window.CONTENT = {
         "crop": [0, 410, 650, 614]
       },
       "reward": {
-        "icon": "🔥",
-        "name": "Feuer-Marshmallows",
-        "unlock": "Die kleinen Krokodile haben ihre FEUER-MARSHMALLOWS freigeschaltet!",
-        "text": "Gegrillte Marshmallows für euer Rettungsteam."
+        "icon": "☁️",
+        "name": "Wolkenkuss",
+        "unlock": "Wolkenkuss gefunden!",
+        "text": "Alle drei Geburtstagsschätze sind zurück!\nJetzt wird gefeiert! 🎉"
       }
     }
   ],
@@ -202,7 +202,7 @@ window.CONTENT = {
     "waiting": "Bis zum Finale",
     "finale": "Das Einhorn retten",
     "found": "Findet das Einhorn!",
-    "rewards": "Geheime Team-Belohnungen",
+    "rewards": "Geburtstagsschätze",
     "done": "Alles Gute, Lucy!",
     "progress": "Unsere Zauberkraft",
     "transition2": "Der Sturm kehrt zurück",
@@ -243,7 +243,7 @@ window.CONTENT = {
     "unlock": "FINALE FREISCHALTEN",
     "startFinale": "Finale starten",
     "confirmFound": "EINHORN GEFUNDEN!",
-    "nextReward": "Nächste Team-Belohnung",
+    "nextReward": "Nächster Geburtstagsschatz",
     "finish": "Zum Geburtstagsbild",
     "reset": "Spiel zurücksetzen",
     "resetQuestion": "Wirklich alles zurücksetzen?",
@@ -277,7 +277,7 @@ window.CONTENT = {
     "rescueTeam": "RETTUNGSTEAM",
     "rescueTeams": "UNSERE RETTUNGSTEAMS",
     "rewardUnlocked": "{team} haben etwas freigeschaltet!",
-    "rewardCounter": "GEHEIME BELOHNUNG {n} / 3",
+    "rewardCounter": "GEBURTSTAGSSCHATZ {n} / 3",
     "levelLabel": "LEVEL {n} / 3",
     "powerRestored": "{power} zurückgebracht!",
     "progressCount": "{n} / 3",

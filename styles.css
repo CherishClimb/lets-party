@@ -441,6 +441,7 @@ main { max-width:1480px; padding:clamp(28px,4vw,58px); }
 .award-symbol { filter:drop-shadow(0 0 20px #f6c84c9c); }
 .all-restored { border:2px solid color-mix(in srgb,var(--team-accent,#55947d) 25%,white); box-shadow:0 10px 28px #35564b10; }
 .reward { border:2px solid color-mix(in srgb,var(--team-accent) 25%,white); background:#fffdf9; box-shadow:0 15px 38px #35564b14; }
+.reward .lead { white-space:pre-line; }
 .waiting-card { border:1px solid #fff; background:radial-gradient(circle at 50% 30%,#fffdf8,#eaf6f0); box-shadow:0 20px 55px #35564b17; }
 .waiting-card .power>span { box-shadow:0 0 24px #f6c84c4f; }
 

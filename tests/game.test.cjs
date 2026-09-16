@@ -133,9 +133,9 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   assert.doesNotMatch(h.html(),/Zaubertrank|Zauberschokolade|Marshmallow/);
   h.click('found');assert.equal(h.state().currentScreen,'rescued');
   assert.match(h.html(),/DAS GEBURTSTAGS-EINHORN IST GERETTET/);
-  h.click('go',{screen:'rewards'});assert.match(h.html(),/ZAUBERTRANK freigeschaltet/);h.tick();
-  h.click('rewardNext');assert.match(h.html(),/ZAUBERSCHOKOLADE freigeschaltet/);h.tick();
-  h.click('rewardNext');assert.match(h.html(),/FEUER-MARSHMALLOWS freigeschaltet/);h.tick();
+  h.click('go',{screen:'rewards'});assert.match(h.html(),/Zaubertrank gefunden!/);h.tick();
+  h.click('rewardNext');assert.match(h.html(),/Schoko-Schatz gefunden!/);h.tick();
+  h.click('rewardNext');assert.match(h.html(),/Wolkenkuss gefunden!/);assert.match(h.html(),/Alle drei Geburtstagsschätze sind zurück!/);assert.match(h.html(),/Jetzt wird gefeiert! 🎉/);h.tick();
   h.click('rewardNext');assert.equal(h.state().currentScreen,'done');
   assert.match(h.html(),/Alles Gute zum 6. Geburtstag, Lucy!/);
   assert.match(h.html(),/Assets\/lucy-unicorn-cutout.png/);
