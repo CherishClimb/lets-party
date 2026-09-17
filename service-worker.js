@@ -2,7 +2,7 @@
 'use strict';
 
 const APP_CACHE_PREFIX = 'lets-party-';
-const CACHE_NAME = 'lets-party-v9';
+const CACHE_NAME = 'lets-party-v10';
 const PRECACHE_URLS = [
   './',
   './index.html',

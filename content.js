@@ -300,7 +300,6 @@ window.CONTENT = {
     "rewardLocked": "Die Belohnungen warten, bis das Einhorn gefunden wurde.",
     "resetDone": "Das Spiel wurde zurückgesetzt.",
     "connectWords": "ZAUBERWÖRTER VERBINDEN",
-    "toCourtyard": "Zum Schulhof · Schatzsuche starten",
     "treasureFound": "SCHATZ GEFUNDEN!",
     "revealRewards": "Geheime Team-Belohnungen zeigen",
     "awardTeam": "{team} haben {power} gefunden!",
@@ -458,19 +457,8 @@ window.CONTENT = {
     {
       "visual": "courtyard",
       "text": "",
-      "duration": 2500,
-      "awardClue": true
-    },
-    {
-      "visual": "magicPowers",
-      "title": "KLUGHEIT IST ZURÜCK!",
-      "text": "",
-      "duration": 4000
-    },
-    {
-      "visual": "clue",
-      "title": "DIE SPUR FÜHRT ZUM SCHULHOF!",
-      "text": "Aber das Geburtstags-Einhorn fehlt immer noch …",
+      "button": "Zum Schulhof-Schatzsuche starten",
+      "awardClue": true,
       "manual": true
     }
   ],

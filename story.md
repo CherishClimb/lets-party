@@ -311,25 +311,11 @@ The third magical power is awarded:
 
 # 💎 KLUGHEIT
 
-Show:
+On the existing **„Der nächste Ort: Breitwiesenschule Hof“** page, show the button:
 
-# **KLUGHEIT IST ZURÜCK!**
+# **ZUM SCHULHOF-SCHATZSUCHE STARTEN**
 
-Then display all three powers:
-
-⭐ Mut  
-🌈 Zusammenhalt  
-💎 Klugheit
-
-But the story is not finished.
-
-Text:
-
-**„Aber das Geburtstags-Einhorn fehlt immer noch …“**
-
-Then:
-
-# **DIE SPUR FÜHRT ZUM SCHULHOF!**
+The button opens the existing Einhorn-Schatz search directly.
 
 ---
 

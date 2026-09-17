@@ -184,8 +184,8 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   assert.equal(h.timerCount(),0,'word reveal waits for the organizer to combine them');
   h.click('sceneNext');assert.match(h.html(),/BREITWIESENSCHULE/);
   h.click('sceneNext');assert.match(h.html(),/HOF/);assert.equal(h.state().clueRevealed,true);
-  h.click('sceneNext');assert.match(h.html(),/KLUGHEIT IST ZURÜCK/);
-  h.click('sceneNext');assert.match(h.html(),/DIE SPUR FÜHRT ZUM SCHULHOF/);
+  assert.match(h.html(),/Zum Schulhof-Schatzsuche starten/);assert.match(h.html(),/SZENE 3 \/ 3/);
+  assert.doesNotMatch(h.html(),/Einhorn fehlt immer noch|Einhorn ist noch nicht gefunden|DIE SPUR FÜHRT ZUM SCHULHOF|KLUGHEIT IST ZURÜCK/);
   h.click('sceneNext');assert.equal(h.state().currentScreen,'pinata');
   assert.match(h.html(),/SUCHT DEN EINHORN-SCHATZ/);assert.equal(h.timerCount(),0);
   h.click('treasureFound');assert.equal(h.state().currentScreen,'returnMessage');
@@ -343,6 +343,7 @@ test('story narration and background music have central mappings',()=>{
   assert.equal(c.finale.length,3);assert.equal(c.finale[0].text,'Die Zauberkräfte sind zurück! ✨');assert.equal(c.finale[0].visual,'finalPowers');
   assert.equal(c.finale[1].text,'Die Magie kehrt zurück … ✨');assert.equal(c.finale[1].visual,'forestTransform');assert.equal(c.finale[1].manual,true);assert.equal(c.finale[1].narration,false);
   assert.equal(c.finale[2].text,'Meine Magie ist wieder da! ✨');assert.equal(c.finale[2].visual,'finalMagic');assert.equal(c.finale[2].audioIndex,1);
+  assert.equal(c.destination.length,3);assert.equal(c.destination[2].visual,'courtyard');assert.equal(c.destination[2].button,'Zum Schulhof-Schatzsuche starten');assert.equal(c.destination[2].manual,true);assert.equal(c.destination[2].awardClue,true);
   assert.equal(c.found.title,'Pssst … ich bin ganz in eurer Nähe. 👀');assert.equal(c.rescued.title,'Ihr habt mich gefunden! 🦄✨');assert.equal(c.rescued.text,'Jetzt wird gefeiert!');
   for(const [from,to] of Object.entries(c.storyNext)) {
     assert.ok(Array.isArray(c[from]),from);assert.ok(c.screens[to],to);

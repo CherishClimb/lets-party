@@ -376,7 +376,7 @@ function advanceScene() {
 }
 function story(screen) {
   const scenes=C[screen],item=scenes[scene],last=scene===scenes.length-1;
-  const nextLabel=item.button||(screen==='intro'&&last?U.startAdventure:screen==='destination'&&last?U.toCourtyard:U.next);
+  const nextLabel=item.button||(screen==='intro'&&last?U.startAdventure:U.next);
   return '<section class="story '+item.visual+'">'+heading(C.screens[screen],'',fmt(U.stepCounter,{n:scene+1,total:scenes.length}))+'<div class="scene-visual">'+visual(item.visual)+'</div>'+(item.title?'<h2 class="scene-title">'+esc(item.title)+'</h2>':'')+(item.text?'<p class="story-text">'+esc(item.text).replaceAll('\n','<br>')+'</p>':'')+(currentNarration()?narrationControls():'')+'<div class="scene-dots" aria-hidden="true">'+scenes.map((_,i)=>'<i class="'+(i===scene?'active':'')+'"></i>').join('')+'</div><div class="actions">'+(scene?button(U.back,'sceneBack','','secondary'):'')+button(nextLabel,'sceneNext')+(screen==='intro'?button(U.skip,'skip','','quiet'):'')+'</div></section>';
 }
 function pinata() {
