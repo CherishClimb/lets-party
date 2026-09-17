@@ -266,7 +266,6 @@ window.CONTENT = {
     "slot": "Kind {n}",
     "empty": "Name (optional)",
     "childrenCount": "{n} Kinder dabei",
-    "teamMats": "Für euer Team: {n} Matten",
     "noChildren": "Hier ist noch niemand eingetragen.",
     "childRequired": "Trage mindestens ein Kind ein.",
     "saved": "Automatisch gespeichert",

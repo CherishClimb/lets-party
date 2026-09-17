@@ -504,7 +504,6 @@ main { max-width:1480px; padding:clamp(28px,4vw,58px); }
 .outdoor-level .team-card { box-shadow:0 9px 24px #35564b10; }
 .outdoor-level .team-card.complete { border-color:var(--team-accent); box-shadow:0 0 0 4px color-mix(in srgb,var(--team-accent) 12%,transparent),0 12px 28px #35564b12; }
 .team-mat-count { margin:4px 0 14px; padding:10px 8px; border-radius:16px; background:#fffdf7b8; }
-.team-mat-count p { margin:0 0 8px; color:#31574f; font-size:1rem; font-weight:850; }
 .team-mats { display:flex; align-items:center; justify-content:center; gap:5px; }
 .team-mats span { width:25px; height:35px; border-radius:6px; background:#dfc9e7; box-shadow:0 4px 0 #0000000b; transform:rotate(-4deg); }
 .team-mats span:nth-child(3n+2) { background:#d1e7f1; transform:rotate(3deg); }

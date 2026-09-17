@@ -144,11 +144,13 @@ test('13 children work from team preparation through both dynamic mat rounds',()
   assert.deepEqual(G.teamIds.map(id=>G.teamSize(prepared,id)),[5,4,4]);
   h.click('go',{screen:'reveal'});assert.match(h.html(),/Kind 13/);
   h.click('go',{screen:'level1'});
-  assert.equal((h.html().match(/Für euer Team: 6 Matten/g)||[]).length,1);
-  assert.equal((h.html().match(/Für euer Team: 5 Matten/g)||[]).length,2);
+  assert.doesNotMatch(h.html(),/Für euer Team:|\d+ Matten/);
+  assert.equal((h.html().match(/data-mat-count="6"/g)||[]).length,1);
+  assert.equal((h.html().match(/data-mat-count="5"/g)||[]).length,2);
   complete(h,0);h.click('go',{screen:'level2'});
-  assert.equal((h.html().match(/Für euer Team: 5 Matten/g)||[]).length,1);
-  assert.equal((h.html().match(/Für euer Team: 4 Matten/g)||[]).length,2);
+  assert.doesNotMatch(h.html(),/Für euer Team:|\d+ Matten/);
+  assert.equal((h.html().match(/data-mat-count="5"/g)||[]).length,1);
+  assert.equal((h.html().match(/data-mat-count="4"/g)||[]).length,2);
 });
 test('full birthday adventure: powers, schoolyard treasure, return, balloon, snacks and birthday image',()=>{
   const h=harness();fill(h);h.click('go',{screen:'reveal'});
