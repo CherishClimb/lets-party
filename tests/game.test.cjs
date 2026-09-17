@@ -186,13 +186,11 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   h.click('sceneNext');assert.match(h.html(),/DIE SPUR FÜHRT ZUM SCHULHOF/);
   h.click('sceneNext');assert.equal(h.state().currentScreen,'pinata');
   assert.match(h.html(),/SUCHT DEN EINHORN-SCHATZ/);assert.equal(h.timerCount(),0);
-  h.click('treasureFound');assert.equal(h.state().currentScreen,'treasure');
-  assert.match(h.html(),/kleine Geburtstagsüberraschung/);assert.equal(h.timerCount(),0);
-  h.click('prizesOpened');h.click('sceneNext');h.click('sceneNext');assert.match(h.html(),/KEHRT ZURÜCK/);
-  h.click('sceneNext');assert.equal(h.state().currentScreen,'waiting');
-  assert.match(h.html(),/Alle drei Zauberkräfte sind sicher/);assert.equal(h.timerCount(),0);
-  assert.doesNotMatch(h.html(),/mascot unicorn|Zaubertrank|Zauberschokolade|Marshmallow/);
-  h.click('go',{screen:'finale'});
+  h.click('treasureFound');assert.equal(h.state().currentScreen,'returnMessage');
+  assert.match(h.html(),/Zurück zum Zauberwald! ✨/);assert.match(h.html(),/Bringt die gesammelten Zauberkräfte mit/);assert.match(h.html(),/Wir sind zurück!/);
+  assert.doesNotMatch(h.html(),/kleine Geburtstagsüberraschung|Überraschungen geöffnet|Nachricht zeigen|KEHRT ZURÜCK/);
+  assert.match(h.html(),/day-decor/);assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');assert.equal(h.timerCount(),0);
+  h.click('sceneNext');assert.equal(h.state().currentScreen,'finale');assert.equal(h.state().returnInvited,true);
   assert.match(h.html(),/Die Zauberkräfte sind zurück!/);assert.match(h.html(),/final-power-return/);
   h.click('sceneNext');assert.match(h.html(),/Meine Magie ist wieder da!/);assert.match(h.html(),/final-magic-visual/);
   h.click('sceneNext');
@@ -304,26 +302,32 @@ test('Klugheit is awarded at the combined clue reveal, not when individual words
   assert.equal(G.canVisit(s,'pinata'),true);
   assert.equal(G.canVisit(s,'finale'),false,'schoolyard return message is still pending');
 });
-test('piñata prizes and return invitation persist, and undo relocks later story stages',()=>{
-  const s=finishState();s.currentScreen='waiting';
+test('treasure confirmation and return invitation persist, and undo relocks later story stages',()=>{
+  const s=finishState();s.currentScreen='finale';
   const restored=G.normalize(JSON.parse(JSON.stringify(s)));
-  assert.equal(restored.currentScreen,'waiting');
+  assert.equal(restored.currentScreen,'finale');
   assert.equal(restored.treasureFound,true);assert.equal(restored.returnInvited,true);
   G.mark(restored,'monster',2,false);
   assert.equal(restored.clueRevealed,false);assert.equal(restored.treasureFound,false);
-  assert.equal(restored.returnInvited,false);assert.equal(G.canVisit(restored,'waiting'),false);
+  assert.equal(restored.returnInvited,false);assert.equal(G.canVisit(restored,'finale'),false);
 });
 test('version 1 saves migrate without losing children, teams or already earned progress',()=>{
   const old=finishState();old.version=1;old.currentScreen='waiting';
   delete old.clueRevealed;delete old.treasureFound;delete old.returnInvited;
   const migrated=G.normalize(old);
   assert.equal(migrated.version,2);assert.equal(migrated.children[0].name,'Emma');
-  assert.equal(migrated.currentScreen,'waiting');assert.equal(G.canVisit(migrated,'finale'),true);
+  assert.equal(migrated.currentScreen,'finale');assert.equal(G.canVisit(migrated,'finale'),true);
   const partial=G.fresh();partial.version=1;partial.children[2].name='Lucy';
   G.mark(partial,'octopus',0,true);
   const loaded=G.normalize(partial);
   assert.equal(loaded.children[2].name,'Lucy');assert.equal(G.earned(loaded,'octopus',0),true);
   assert.equal(loaded.clueRevealed,false);
+});
+test('obsolete Schatz screens migrate to the simplified return flow',()=>{
+  const found=finishState();found.returnInvited=false;found.currentScreen='treasure';
+  assert.equal(G.normalize(found).currentScreen,'returnMessage');
+  const returned=finishState();returned.currentScreen='waiting';
+  assert.equal(G.normalize(returned).currentScreen,'finale');
 });
 test('story narration and background music have central mappings',()=>{
   const h=harness(),c=h.context.CONTENT;
@@ -442,7 +446,7 @@ test('missing narration stays hidden and never blocks story navigation',async()=
   h.click('sceneNext');assert.equal(h.context.StoryNarration.snapshot().id,'intro:2');assert.equal(h.state().currentScreen,'intro');
 });
 test('four final narration clips use finale, found and rescued states without changing buttons',()=>{
-  const s=finishState();s.currentScreen='waiting';const h=harness(JSON.stringify(s));
+  const s=finishState();s.currentScreen='finale';const h=harness(JSON.stringify(s));
   h.click('go',{screen:'finale'});
   assert.equal(h.context.StoryNarration.snapshot().id,'finale:1');assert.match(h.audio().src,/final-01\.mp3$/);assert.equal(h.timerCount(),0);
   h.audio().emit('ended');assert.equal(h.context.StoryNarration.snapshot().id,'finale:1');assert.equal(h.timerCount(),0);
@@ -472,7 +476,7 @@ test('one looping music player follows restored story state and ducks under narr
 
   const away=finishState();away.returnInvited=false;away.treasureFound=false;away.currentScreen='pinata';
   assert.equal(harness(JSON.stringify(away)).context.BackgroundMusic.snapshot().id,'storm');
-  const returned=finishState();returned.currentScreen='waiting';
+  const returned=finishState();returned.currentScreen='finale';
   assert.equal(harness(JSON.stringify(returned)).context.BackgroundMusic.snapshot().id,'final');
 });
 test('organizer music slider persists 0 to 30 percent without affecting narration or enabling music',()=>{
@@ -518,7 +522,7 @@ test('music toggle stays off across story phases and remains independent from na
   assert.equal(h.context.BackgroundMusic.snapshot().status,'playing');
   assert.equal(h.context.StoryNarration.snapshot().status,'playing');
 
-  const returned=finishState();returned.currentScreen='waiting';
+  const returned=finishState();returned.currentScreen='finale';
   const finale=harness(JSON.stringify(returned));
   assert.equal(finale.context.BackgroundMusic.snapshot().id,'final');
   finale.click('musicToggle');finale.click('go',{screen:'finale'});
@@ -542,7 +546,11 @@ test('atmosphere follows storm and restored-magic story state',()=>{
   const collected=finishState();collected.returnInvited=false;collected.treasureFound=false;collected.currentScreen='pinata';
   assert.match(harness(JSON.stringify(collected)).html(),/storm-decor/);
 
-  const restored=finishState();restored.currentScreen='waiting';
+  const returning=finishState();returning.returnInvited=false;returning.currentScreen='returnMessage';
+  const returnPage=harness(JSON.stringify(returning));
+  assert.match(returnPage.html(),/day-decor/);assert.equal(returnPage.context.BackgroundMusic.snapshot().id,'storm');
+
+  const restored=finishState();restored.currentScreen='finale';
   assert.match(harness(JSON.stringify(restored)).html(),/day-decor/);
 });
 test('final birthday image uses the transparent cutout and omits participant names',()=>{

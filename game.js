@@ -4,7 +4,7 @@
   const teamIds = ['monster', 'octopus', 'crocodile'];
   const iconIds = ['star','moon','rainbow','heart','cloud','sun','diamond','flower','butterfly','lightning','wand','leaf','comet','crown','gem'];
   const maxChildren = 15;
-  const screens = ['home','setup','reveal','intro','warmup','outside','level1','transition2','level2','transition3','level3','award','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done','progress'];
+  const screens = ['home','setup','reveal','intro','warmup','outside','level1','transition2','level2','transition3','level3','award','destination','pinata','returnMessage','finale','found','rescued','rewards','done','progress'];
   function fresh() {
     return {
       version:2,
@@ -29,8 +29,8 @@
     if (screen==='award') return !!s.award && teamIds.includes(s.award.id) && [0,1].includes(s.award.level) && earned(s,s.award.id,s.award.level);
     if (screen==='destination') return allTasksComplete(s);
     if (screen==='pinata') return eligible(s);
-    if (screen==='treasure') return eligible(s) && s.treasureFound;
-    if (['returnMessage','waiting','finale','found'].includes(screen)) return eligible(s) && s.returnInvited;
+    if (screen==='returnMessage') return eligible(s) && s.treasureFound;
+    if (['finale','found'].includes(screen)) return eligible(s) && s.returnInvited;
     if (['rescued','rewards','done'].includes(screen)) return eligible(s) && s.returnInvited && s.rescued;
     return true;
   }
@@ -62,7 +62,10 @@
     s.birthdayComplete=(input.birthdayComplete===true || (input.version===1 && input.currentScreen==='done')) && s.rescued;
     s.rewardIndex=Number.isInteger(input.rewardIndex)?Math.max(0,Math.min(2,input.rewardIndex)):0;
     if (teamIds.includes(input.award?.id) && [0,1].includes(input.award?.level)) s.award={id:input.award.id,level:input.award.level};
-    s.currentScreen=canVisit(s,input.currentScreen)?input.currentScreen:'home';
+    const requestedScreen=['treasure','waiting'].includes(input.currentScreen)
+      ?(s.returnInvited?'finale':s.treasureFound?'returnMessage':input.currentScreen)
+      :input.currentScreen;
+    s.currentScreen=canVisit(s,requestedScreen)?requestedScreen:'home';
     return s;
   }
   function revealClue(s) {

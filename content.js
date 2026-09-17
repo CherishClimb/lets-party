@@ -200,7 +200,6 @@ window.CONTENT = {
     "level2": "Level 2 · Regenbogenweg",
     "level3": "Level 3 · Buchstabensuche",
     "destination": "Der nächste Ort",
-    "waiting": "Bis zum Finale",
     "finale": "Das Einhorn retten",
     "found": "Findet das Einhorn!",
     "rewards": "Geburtstagsschätze",
@@ -210,8 +209,7 @@ window.CONTENT = {
     "transition3": "Eine geheime Spur",
     "award": "Eine Zauberkraft gefunden",
     "pinata": "Der Einhorn-Schatz",
-    "treasure": "Schatz gefunden!",
-    "returnMessage": "Eine Nachricht vom Einhorn",
+    "returnMessage": "Zurück zum Zauberwald! ✨",
     "rescued": "Das Einhorn ist gerettet"
   },
   "ui": {
@@ -250,7 +248,6 @@ window.CONTENT = {
     "locked": "Zuerst müssen alle drei Teams die vorherigen Aufgaben schaffen.",
     "waitTeams": "Weiter, sobald alle drei Teams fertig sind.",
     "unlock": "FINALE FREISCHALTEN",
-    "startFinale": "Finale starten",
     "confirmFound": "Ihr habt mich gefunden!",
     "nextReward": "Nächster Geburtstagsschatz",
     "finish": "Zum Geburtstagsbild",
@@ -296,8 +293,6 @@ window.CONTENT = {
     "missingPart": "Findet euer fehlendes Wortteil!",
     "wordSlots": "{n} fehlende Buchstaben",
     "revealDestination": "Kinder zusammenrufen · Wortteile zeigen",
-    "toWaiting": "Weiter · Bis zu Hause",
-    "replayDestination": "Spur noch einmal zeigen",
     "stepCounter": "SZENE {n} / {total}",
     "finaleUnavailable": "Für das Finale brauchen alle Teams alle drei Zauberkräfte.",
     "returnGame": "Zurück zum Abenteuer",
@@ -308,8 +303,6 @@ window.CONTENT = {
     "connectWords": "ZAUBERWÖRTER VERBINDEN",
     "toCourtyard": "Zum Schulhof · Schatzsuche starten",
     "treasureFound": "SCHATZ GEFUNDEN!",
-    "prizesOpened": "Überraschungen geöffnet · Nachricht zeigen",
-    "returnHome": "KEHRT ZURÜCK!",
     "revealRewards": "Geheime Team-Belohnungen zeigen",
     "awardTeam": "{team} haben {power} gefunden!",
     "awardAll": "{power} IST ZURÜCK!",
@@ -482,13 +475,6 @@ window.CONTENT = {
       "manual": true
     }
   ],
-  "waiting": {
-    "title": "Alle drei Zauberkräfte sind sicher.",
-    "text": "Aber das letzte Geburtstagsgeheimnis wartet noch …",
-    "readyTitle": "",
-    "readyText": "",
-    "hint": "Zurück zu Hause: Den echten Einhorn-Ballon bereitstellen. Dann startet die Spielleitung das Finale."
-  },
   "finale": [
     {
       "visual": "finalPowers",
@@ -567,26 +553,11 @@ window.CONTENT = {
     "title": "SUCHT DEN EINHORN-SCHATZ!",
     "text": "Hier irgendwo hat das Einhorn etwas versteckt …"
   },
-  "treasure": {
-    "title": "Ihr habt den Einhorn-Schatz gefunden!",
-    "text": "Für jeden von euch wartet eine kleine Geburtstagsüberraschung.",
-    "hint": "Erst weiter, wenn die Kinder ihre kleinen Überraschungen geöffnet haben."
-  },
   "returnMessage": [
     {
-      "visual": "treasure",
-      "text": "Aber im Schatz war noch etwas …",
-      "duration": 3000
-    },
-    {
-      "visual": "message",
-      "text": "Danke, dass ihr meine drei Zauberkräfte gefunden habt.",
-      "duration": 4500
-    },
-    {
-      "visual": "message",
-      "title": "KEHRT ZURÜCK!",
-      "text": "Bringt sie jetzt zurück in den Zauberwald.",
+      "visual": "magicPowers",
+      "text": "Bringt die gesammelten Zauberkräfte mit.",
+      "button": "Wir sind zurück!",
       "manual": true
     }
   ],
@@ -605,7 +576,7 @@ window.CONTENT = {
     "transition2": "level2",
     "transition3": "level3",
     "destination": "pinata",
-    "returnMessage": "waiting",
+    "returnMessage": "finale",
     "finale": "found"
   }
 };

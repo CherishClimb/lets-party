@@ -357,61 +357,23 @@ When the children find the piñata, the organizer taps:
 
 # **SCHATZ GEFUNDEN!**
 
-Show a short celebration.
-
-Text:
-
-**„Ihr habt den Einhorn-Schatz gefunden!“**
-
-Then:
-
-**„Für jeden von euch wartet eine kleine Geburtstagsüberraschung.“**
-
-The children receive the small prizes from/with the piñata.
-
-After the prizes are opened, reveal one more message.
-
-Text:
-
-**„Aber im Schatz war noch etwas …“**
-
-Then show a message from the unicorn:
-
-**„Danke, dass ihr meine drei Zauberkräfte gefunden habt.“**
-
-**„Bringt sie jetzt zurück in den Zauberwald.“**
-
-Big message:
-
-# **KEHRT ZURÜCK!**
-
-This means the children return home.
-
----
-
-# 10. Return-home waiting screen
-
-During the return home, the app can remain on a calm waiting screen.
+Go directly to a simple return scene.
 
 Show:
 
-⭐ **Mut**  
-🌈 **Zusammenhalt**  
-💎 **Klugheit**
+# **ZURÜCK ZUM ZAUBERWALD! ✨**
 
-Text:
+**„Bringt die gesammelten Zauberkräfte mit.“**
 
-**„Alle drei Zauberkräfte sind sicher.“**
+The organizer taps:
 
-Then:
+# **WIR SIND ZURÜCK!**
 
-**„Aber das letzte Geburtstagsgeheimnis wartet noch …“**
-
-Do not reveal the unicorn yet.
+This manually starts the existing final sequence at home.
 
 ---
 
-# 11. Finale at home
+# 10. Finale at home
 
 The organizer manually starts the finale after everyone is back home and the real unicorn balloon is ready.
 
@@ -499,7 +461,7 @@ The children now search for and discover the **real unicorn balloon** at home.
 
 ---
 
-# 12. Unicorn found — Team snack unlock
+# 11. Unicorn found — Team snack unlock
 
 After the unicorn balloon has been found, the organizer taps:
 
@@ -553,7 +515,7 @@ These should feel like magical rewards unlocked by each team's contribution, not
 
 ---
 
-# 13. Final birthday screen
+# 12. Final birthday screen
 
 This is the most beautiful and celebratory screen in the app.
 
@@ -590,7 +552,7 @@ Final line:
 
 ---
 
-# 14. Visual and implementation rules
+# 13. Visual and implementation rules
 
 ## Child-facing scenes
 
