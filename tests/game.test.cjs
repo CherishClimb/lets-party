@@ -523,18 +523,25 @@ test('one looping music player follows restored story state and ducks under narr
   const returned=finishState();returned.currentScreen='finale';
   assert.equal(harness(JSON.stringify(returned)).context.BackgroundMusic.snapshot().id,'final');
 });
-test('organizer music slider persists 0 to 30 percent without affecting narration or enabling music',()=>{
+test('organizer music slider persists 0 to 100 percent without affecting narration or enabling music',()=>{
   const h=harness();fill(h);h.click('go',{screen:'intro'});h.click('organizer');
-  assert.match(h.elements['#organizer'].innerHTML,/Musiklautstärke/);assert.match(h.elements['#organizer'].innerHTML,/min="0" max="30"/);assert.match(h.elements['#organizer'].innerHTML,/value="10"/);
-  assert.equal(h.audio().volume,1);h.inputVolume(20);
-  assert.equal(h.context.BackgroundMusic.snapshot().normalVolume,.2);assert.equal(h.context.BackgroundMusic.snapshot().volume,.12);assert.equal(h.audio().volume,1);assert.equal(h.musicSetting(),'0.2');
+  assert.match(h.elements['#organizer'].innerHTML,/Musiklautstärke/);assert.match(h.elements['#organizer'].innerHTML,/min="0" max="100"/);assert.match(h.elements['#organizer'].innerHTML,/value="10"/);
+  assert.equal(h.audio().volume,1);h.inputVolume(50);
+  assert.equal(h.context.BackgroundMusic.snapshot().normalVolume,.5);assert.equal(h.context.BackgroundMusic.snapshot().volume,.3);assert.equal(h.audio().volume,1);assert.equal(h.musicSetting(),'0.5');
   h.click('close');h.click('narrationToggle');h.click('musicToggle');assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);
-  h.inputVolume(30);assert.equal(h.context.BackgroundMusic.snapshot().normalVolume,.3);assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);
+  h.inputVolume(100);assert.equal(h.context.BackgroundMusic.snapshot().normalVolume,1);assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);
   h.click('sceneNext');h.click('sceneNext');h.click('sceneNext');assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);
-  h.click('musicToggle');assert.equal(h.context.BackgroundMusic.snapshot().volume,.18);
-  h.click('narrationToggle');assert.equal(h.context.BackgroundMusic.snapshot().volume,.3);
+  h.click('musicToggle');assert.equal(h.context.BackgroundMusic.snapshot().volume,.6);
+  h.click('narrationToggle');assert.equal(h.context.BackgroundMusic.snapshot().volume,1);
   const reloaded=harness(h.serialized(),false,null,'ok',h.musicSetting());
-  assert.equal(reloaded.context.BackgroundMusic.snapshot().normalVolume,.3);assert.equal(reloaded.audio().volume,1);
+  assert.equal(reloaded.context.BackgroundMusic.snapshot().normalVolume,1);assert.equal(reloaded.audio().volume,1);
+});
+test('music slider changes the already playing track immediately without restarting it',()=>{
+  const h=harness();const source=h.music().src,playCalls=h.music().playCalls;h.music().currentTime=17;
+  h.click('organizer');h.inputVolume(50);
+  assert.equal(h.context.BackgroundMusic.snapshot().normalVolume,.5);assert.equal(h.music().volume,.5);assert.equal(h.music().src,source);assert.equal(h.music().currentTime,17);assert.equal(h.music().playCalls,playCalls);
+  h.inputVolume(0);assert.equal(h.music().volume,0);assert.equal(h.musicSetting(),'0');
+  h.inputVolume(100);assert.equal(h.music().volume,1);assert.equal(h.musicSetting(),'1');
 });
 test('music toggle stays off across story phases and remains independent from narration',()=>{
   const h=harness();fill(h);h.click('go',{screen:'intro'});

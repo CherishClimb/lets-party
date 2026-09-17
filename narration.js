@@ -143,11 +143,12 @@
     emit() { this.listener(this.snapshot()); }
     targetVolume() { return this.ducked?this.normalVolume*this.duckRatio:this.normalVolume; }
     setVolume(volume) {
-      const next=Math.max(0,Math.min(.3,Number(volume)));
+      const next=Math.max(0,Math.min(1,Number(volume)));
       if(!Number.isFinite(next)) return;
       this.normalVolume=next;
       this.fadeToken++;
-      if(this.audio) this.audio.volume=this.targetVolume();
+      if(this.pending) this.activatePending(false);
+      else if(this.audio) this.audio.volume=this.targetVolume();
       this.emit();
     }
     fadeTo(target,duration,onDone=()=>{}) {
