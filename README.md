@@ -18,6 +18,10 @@ For an iPad on the same Wi-Fi, serve with `--bind 0.0.0.0` and use the computer'
 LAN IP instead of 127.0.0.1. Windows may ask to allow private-network access.
 The computer must stay on. The TV simply mirrors the organizer's device.
 
+The app opens with the four-digit **Zaubercode `0606`**. The organizer can replace
+it under **Spielleitung → Zaubercode**. The selected code stays on that device;
+successful entry keeps the current browser tab unlocked until its session ends.
+
 ## Party flow
 
 1. Choose 6–15 child slots, fill the names, choose icons, and adjust teams. Empty places are fine.

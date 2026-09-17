@@ -5,6 +5,19 @@ window.CONTENT = {
     "eyebrow": "EIN MAGISCHES TEAMABENTEUER",
     "footer": "Gemeinsam sind wir magisch."
   },
+  "access": {
+    "defaultCode": "0606",
+    "title": "Willkommen im Zaubergeburtstag 🦄✨",
+    "subtitle": "Gib den Zaubercode ein",
+    "inputLabel": "Vierstelliger Zaubercode",
+    "open": "Zauberwelt öffnen ✨",
+    "wrong": "Hmm … der Zaubercode stimmt noch nicht ✨",
+    "setting": "Zaubercode",
+    "settingHint": "Neuen 4-stelligen Code eingeben",
+    "save": "Code speichern",
+    "saved": "Zaubercode gespeichert ✨",
+    "fourDigits": "Bitte gib genau 4 Ziffern ein."
+  },
   "assets": {
     "magic": {
       "forestDay": "Assets/magic/forest-day.png.png",

@@ -5,7 +5,9 @@ const C = window.CONTENT, G = window.Game, P = window.PhotoStore, N = window.Sto
 const app = document.querySelector('#app'), dialog = document.querySelector('#organizer');
 const STORAGE_KEY = 'unicorn-rescue-v1';
 const MUSIC_VOLUME_KEY = 'unicorn-rescue-music-volume-v1';
-let state = G.fresh(), storageError = '', presentation = false, storyNavigation = 'manual', scene = 0, timer = null, celebrationTimer = null, finalCelebrating = false, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0, lastStorm = null, memoryPhotos = [], photosReady = false;
+const MAGIC_CODE_KEY = 'unicorn-rescue-magic-code-v1';
+const MAGIC_UNLOCK_KEY = 'unicorn-rescue-magic-unlocked-v1';
+let state = G.fresh(), storageError = '', presentation = false, storyNavigation = 'manual', scene = 0, timer = null, celebrationTimer = null, finalCelebrating = false, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0, lastStorm = null, memoryPhotos = [], photosReady = false, magicCode = C.access.defaultCode, magicCodeDraft = '', accessUnlocked = false;
 const warmupPoses = Object.fromEntries(C.teams.map(t=>[t.id,[false,false,false]]));
 const sequence = ['home','setup','reveal','intro','warmup','outside','level1','transition2','level2','transition3','level3','destination','pinata','returnMessage','finale','found','rescued','rewards','done'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -47,6 +49,10 @@ function heading(title, text='', eyebrow='') { return '<div class="page-heading"
 function note(text) { document.querySelector('#notice').textContent = text; }
 function save() { try { localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); storageError=''; } catch { storageError=U.saveFailed; note(storageError); } }
 function saveMusicVolume(value) { try { localStorage.setItem(MUSIC_VOLUME_KEY,String(value)); } catch {} }
+function saveMagicCode(value) {
+  try { localStorage.setItem(MAGIC_CODE_KEY,value);magicCode=value;return true; }
+  catch { note(U.saveFailed);return false; }
+}
 function photoStatus() {
   const copy=C.memoryPhotos, count=memoryPhotos.length;
   return fmt(count===3?copy.complete:copy.status,{n:count});
@@ -156,6 +162,11 @@ try {
   const rawVolume=localStorage.getItem(MUSIC_VOLUME_KEY),savedVolume=Number(rawVolume);
   if(rawVolume!==null&&Number.isFinite(savedVolume)) M?.setVolume?.(savedVolume);
 } catch {}
+try {
+  const savedCode=localStorage.getItem(MAGIC_CODE_KEY);
+  if(/^\d{4}$/.test(savedCode||'')) magicCode=savedCode;
+  accessUnlocked=sessionStorage.getItem(MAGIC_UNLOCK_KEY)==='yes';
+} catch {}
 C.teams.forEach(t=>{ if(state.teams[t.id].gesture!==null) warmupPoses[t.id].fill(true); });
 document.title = C.app.title;
 function cancelTimer() { clearTimeout(timer); timer=null; }
@@ -260,6 +271,7 @@ function go(screen) {
   render(); app.focus({preventScroll:true}); window.scrollTo({top:0,behavior:'instant'});
 }
 function chrome(flags=sceneFlags()) {
+  document.body.classList.remove('access-mode');
   document.body.classList.toggle('presentation',presentation);
   document.body.classList.toggle('birthday-mode',state.currentScreen==='done');
   document.body.classList.toggle('cinematic-mode',cinematicScreens.has(state.currentScreen));
@@ -273,6 +285,27 @@ function chrome(flags=sceneFlags()) {
   }
   document.querySelector('#header').innerHTML='<button class="brand" data-action="go" data-screen="home"><span aria-hidden="true">✦</span>'+esc(C.app.title)+'</button><div class="header-actions">'+musicButton()+(presentation?button(U.exitPresentation,'presentation','','secondary'):button(U.progress,'go','data-screen="progress"','quiet')+button(U.presentation,'presentation','','quiet')+button('⚙ '+U.organizer,'organizer','','secondary'))+'</div>';
   document.querySelector('#footer').innerHTML='<span>✧ '+esc(C.app.footer)+'</span><span class="organizer-only">'+esc(storageError || U.saved)+'</span>';
+}
+function accessGate() {
+  const copy=C.access;
+  document.body.classList.add('access-mode','scene-day');
+  document.body.classList.remove('birthday-mode','cinematic-mode','scene-storm','scene-transform');
+  document.querySelector('#header').innerHTML='';
+  document.querySelector('#footer').innerHTML='';
+  app.innerHTML='<section class="magic-code-gate"><div class="magic-code-card"><div class="magic-code-unicorn" aria-hidden="true"><img src="'+esc(C.assets.magic.unicorn)+'" alt="" draggable="false"><span>✦</span><span>✧</span></div><div class="magic-code-copy"><h1>'+esc(copy.title)+'</h1><p class="lead">'+esc(copy.subtitle)+'</p><form class="magic-code-form" data-magic-code-form novalidate><label for="magic-code-input">'+esc(copy.inputLabel)+'</label><input id="magic-code-input" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" enterkeyhint="go" data-magic-code-entry aria-describedby="magic-code-error"><p id="magic-code-error" class="magic-code-error" role="alert" aria-live="polite"></p><button class="primary" type="submit">'+esc(copy.open)+'</button></form></div></div></section>';
+  N?.stop?.();M?.pause?.();
+  app.querySelector?.('[data-magic-code-entry]')?.focus?.({preventScroll:true});
+}
+function unlockWithCode(value,form) {
+  const input=form?.querySelector?.('[data-magic-code-entry]'),error=form?.querySelector?.('#magic-code-error');
+  if(value===magicCode) {
+    accessUnlocked=true;
+    try {sessionStorage.setItem(MAGIC_UNLOCK_KEY,'yes');} catch {}
+    render();app.focus({preventScroll:true});return;
+  }
+  if(error) error.textContent=C.access.wrong;
+  input?.setAttribute?.('aria-invalid','true');
+  input?.focus?.({preventScroll:true});input?.select?.();
 }
 function roster(t) {
   const list=children(t.id);
@@ -414,6 +447,7 @@ function replayFinalCelebration() {
 }
 function render() {
   cancelTimer();
+  if(!accessUnlocked) {accessGate();return;}
   if(state.currentScreen!=='done') {clearTimeout(celebrationTimer);celebrationTimer=null;finalCelebrating=false;}
   const flags=sceneFlags(), sunnyReturn=lastStorm===true&&!flags.storm&&!flags.transforming;
   lastStorm=flags.storm;
@@ -444,7 +478,8 @@ function openOrganizer(reset=false) {
     const idx=sequence.indexOf(state.currentScreen==='award'?'level'+(state.award.level+1):state.currentScreen), prev=sequence[Math.max(0,idx-1)], next=sequence[idx+1];
     const volumePercent=Math.round((M?.snapshot?.().normalVolume??.1)*100);
     const musicVolume='<fieldset class="music-volume-setting"><legend>'+esc(U.musicVolume)+'</legend><label><input type="range" min="0" max="30" step="1" value="'+volumePercent+'" data-music-volume aria-label="'+esc(U.musicVolume)+'"><output data-music-volume-output>'+volumePercent+'%</output></label></fieldset>';
-    dialog.innerHTML='<div class="dialog-heading"><h2>'+esc(U.organizer)+'</h2>'+button(U.close,'close','','secondary')+'</div><fieldset class="story-control"><legend>'+esc(U.storyControl)+'</legend><label><input type="radio" name="story-navigation" value="manual" data-story-mode="manual"'+(storyNavigation==='manual'?' checked':'')+'> '+esc(U.storyManual)+'</label><label><input type="radio" name="story-navigation" value="automatic" data-story-mode="automatic"'+(storyNavigation==='automatic'?' checked':'')+'> '+esc(U.storyAutomatic)+'</label></fieldset>'+musicVolume+'<button class="organizer-photo-button" data-action="photos"><span>'+esc(C.memoryPhotos.menu)+'</span><strong>'+esc(photoStatus())+'</strong></button><div class="actions">'+nav(U.back,prev,'secondary')+(next?nav(U.next,next,'secondary',!G.canVisit(state,next)):'')+'</div><h3>'+esc(U.jump)+'</h3><div class="jump-grid">'+['home','reveal','outside','level1','level2','level3','destination','pinata','returnMessage','finale','progress'].map(s=>nav(C.screens[s],s,'secondary',!G.canVisit(state,s))).join('')+'</div><div class="actions">'+nav(U.edit,'setup','quiet')+nav(U.replayIntro,'intro','quiet')+nav(U.replayFinale,'finale','quiet',!G.canVisit(state,'finale'))+'</div><h3>'+esc(U.completions)+'</h3><div class="completion-editor">'+C.teams.map(t=>'<fieldset><legend>'+esc(t.name)+'</legend>'+C.powers.map((p,i)=>'<label><input type="checkbox" data-mark-team="'+t.id+'" data-mark-level="'+i+'"'+(state.teams[t.id].completedLevels[i]?' checked':'')+(!G.levelOpen(state,i)&&!state.teams[t.id].completedLevels[i]?' disabled':'')+'>'+p.icon+' '+esc(p.name)+'</label>').join('')+'</fieldset>').join('')+'</div><details><summary>'+esc(U.answers)+'</summary>'+C.teams.map(t=>'<p>'+esc(t.name)+' → <strong>'+esc(t.word)+'</strong></p>').join('')+'</details><hr>'+button(U.reset,'reset','','danger');
+    const codeSetting='<fieldset class="magic-code-setting"><legend>'+esc(C.access.setting)+'</legend><label><span>'+esc(C.access.settingHint)+'</span><input type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="new-password" value="'+esc(magicCodeDraft)+'" data-magic-code-setting></label>'+button(C.access.save,'saveMagicCode','','secondary')+'</fieldset>';
+    dialog.innerHTML='<div class="dialog-heading"><h2>'+esc(U.organizer)+'</h2>'+button(U.close,'close','','secondary')+'</div><fieldset class="story-control"><legend>'+esc(U.storyControl)+'</legend><label><input type="radio" name="story-navigation" value="manual" data-story-mode="manual"'+(storyNavigation==='manual'?' checked':'')+'> '+esc(U.storyManual)+'</label><label><input type="radio" name="story-navigation" value="automatic" data-story-mode="automatic"'+(storyNavigation==='automatic'?' checked':'')+'> '+esc(U.storyAutomatic)+'</label></fieldset>'+musicVolume+codeSetting+'<button class="organizer-photo-button" data-action="photos"><span>'+esc(C.memoryPhotos.menu)+'</span><strong>'+esc(photoStatus())+'</strong></button><div class="actions">'+nav(U.back,prev,'secondary')+(next?nav(U.next,next,'secondary',!G.canVisit(state,next)):'')+'</div><h3>'+esc(U.jump)+'</h3><div class="jump-grid">'+['home','reveal','outside','level1','level2','level3','destination','pinata','returnMessage','finale','progress'].map(s=>nav(C.screens[s],s,'secondary',!G.canVisit(state,s))).join('')+'</div><div class="actions">'+nav(U.edit,'setup','quiet')+nav(U.replayIntro,'intro','quiet')+nav(U.replayFinale,'finale','quiet',!G.canVisit(state,'finale'))+'</div><h3>'+esc(U.completions)+'</h3><div class="completion-editor">'+C.teams.map(t=>'<fieldset><legend>'+esc(t.name)+'</legend>'+C.powers.map((p,i)=>'<label><input type="checkbox" data-mark-team="'+t.id+'" data-mark-level="'+i+'"'+(state.teams[t.id].completedLevels[i]?' checked':'')+(!G.levelOpen(state,i)&&!state.teams[t.id].completedLevels[i]?' disabled':'')+'>'+p.icon+' '+esc(p.name)+'</label>').join('')+'</fieldset>').join('')+'</div><details><summary>'+esc(U.answers)+'</summary>'+C.teams.map(t=>'<p>'+esc(t.name)+' → <strong>'+esc(t.word)+'</strong></p>').join('')+'</details><hr>'+button(U.reset,'reset','','danger');
   }
   if(!dialog.open) dialog.showModal();
 }
@@ -477,6 +512,10 @@ document.addEventListener('click', event=>{
     case 'celebrate': replayFinalCelebration(); break;
     case 'musicToggle': M?.toggle?.(); break;
     case 'narrationToggle': N?.toggle?.(); break;
+    case 'saveMagicCode':
+      if(!/^\d{4}$/.test(magicCodeDraft)) {note(C.access.fourDigits);break;}
+      if(saveMagicCode(magicCodeDraft)) {magicCodeDraft='';openOrganizer();note(C.access.saved);}
+      break;
     case 'close': dialog.close(); break;
     case 'reset': openOrganizer(true); break;
     case 'resetConfirm': clearMemoryPhotos(false); state=G.fresh(); C.teams.forEach(t=>warmupPoses[t.id].fill(false)); warmupTeam=0; returnScreen='home'; presentation=false; go('home'); note(U.resetDone); break;
@@ -507,6 +546,15 @@ document.addEventListener('click', event=>{
 });
 document.addEventListener('input',event=>{
   const el=event.target;
+  if(el.dataset.magicCodeEntry!==undefined) {
+    el.value=String(el.value||'').replace(/\D/g,'').slice(0,4);
+    el.removeAttribute?.('aria-invalid');
+    const error=el.form?.querySelector?.('#magic-code-error');if(error) error.textContent='';
+    return;
+  }
+  if(el.dataset.magicCodeSetting!==undefined) {
+    magicCodeDraft=String(el.value||'').replace(/\D/g,'').slice(0,4);el.value=magicCodeDraft;return;
+  }
   if(el.dataset.musicVolume!==undefined) {
     const volume=Math.max(0,Math.min(30,Number(el.value)))/100;
     M?.setVolume?.(volume);saveMusicVolume(volume);
@@ -514,6 +562,13 @@ document.addEventListener('input',event=>{
     return;
   }
   if(el.dataset.field==='name') {state.children[Number(el.dataset.child)].name=el.value; save();}
+});
+document.addEventListener('submit',event=>{
+  const form=event.target.closest?.('[data-magic-code-form]');
+  if(!form) return;
+  event.preventDefault();
+  const input=form.querySelector?.('[data-magic-code-entry]');
+  unlockWithCode(String(input?.value||''),form);
 });
 document.addEventListener('change',event=>{
   const el=event.target;

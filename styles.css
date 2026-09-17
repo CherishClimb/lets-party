@@ -161,6 +161,42 @@ hr { border:0; border-top:1px solid var(--line); margin:20px 0; }
 #offline-status { position:fixed; left:12px; bottom:12px; z-index:30; padding:6px 10px; border:1px solid #d8e3db; border-radius:999px; color:#42645d; background:#fffdf8e8; box-shadow:0 4px 14px #29493f18; font-size:.72rem; font-weight:750; pointer-events:none; backdrop-filter:blur(8px); }
 #offline-status[hidden] { display:none; }
 #offline-status.is-offline { color:#fff; border-color:#345c54; background:#345c54e8; }
+.access-mode { min-height:100svh; overflow-x:hidden; }
+.access-mode #header,.access-mode #footer { display:none; }
+.access-mode main { width:100%; max-width:none; min-height:100svh; padding:clamp(18px,4vw,52px); display:grid; place-items:center; }
+.magic-code-gate { width:min(100%,980px); }
+.magic-code-card { position:relative; display:grid; grid-template-columns:minmax(270px,.9fr) minmax(320px,1.1fr); align-items:center; gap:clamp(24px,5vw,72px); min-height:min(680px,calc(100svh - clamp(36px,8vw,104px))); padding:clamp(30px,6vw,74px); border:1px solid rgba(255,255,255,.42); border-radius:clamp(32px,5vw,58px); background:rgba(255,255,255,.68); box-shadow:0 28px 80px rgba(39,74,63,.18); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); overflow:hidden; }
+.magic-code-card::before,.magic-code-card::after { content:'✦'; position:absolute; color:#d6ae3e; opacity:.55; animation:float 4s ease-in-out infinite; }
+.magic-code-card::before { top:9%; right:8%; font-size:2rem; }
+.magic-code-card::after { content:'✧'; left:7%; bottom:8%; font-size:2.6rem; animation-delay:-1.7s; }
+.magic-code-unicorn { position:relative; display:grid; place-items:center; min-width:0; }
+.magic-code-unicorn img { display:block; width:min(100%,390px); height:auto; filter:drop-shadow(0 20px 25px rgba(41,70,62,.24)); animation:unicorn-float 5s ease-in-out infinite; }
+.magic-code-unicorn span { position:absolute; color:#f6c84c; font-size:2rem; animation:sparkle-breathe 2.4s ease-in-out infinite alternate; }
+.magic-code-unicorn span:first-of-type { top:15%; left:8%; }.magic-code-unicorn span:last-of-type { right:7%; bottom:18%; animation-delay:-1.1s; }
+.magic-code-copy { text-align:center; }
+.magic-code-copy h1 { color:#174f46; font-size:clamp(2.35rem,5vw,4.7rem); }
+.magic-code-copy .lead { margin-bottom:26px; color:#496964; }
+.magic-code-form { width:min(100%,420px); margin:auto; }
+.magic-code-form label { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+.magic-code-form input { height:74px; margin:0 auto 12px; border:2px solid rgba(23,107,91,.24); border-radius:20px; color:#174f46; background:rgba(255,253,248,.92); box-shadow:inset 0 2px 7px rgba(32,59,57,.07); font-size:2rem; font-weight:850; letter-spacing:.65em; text-align:center; padding-left:calc(18px + .65em); }
+.magic-code-form input[aria-invalid=true] { border-color:#c66f61; box-shadow:0 0 0 4px rgba(198,111,97,.13); }
+.magic-code-form .primary { width:100%; margin-top:8px; }
+.magic-code-error { min-height:27px; margin:0 0 5px; color:#9c493e; font-size:.92rem; font-weight:750; line-height:1.4; }
+.magic-code-setting { margin:12px 0 8px; padding:14px 16px; border-radius:16px; background:#f7fbf8; display:grid; grid-template-columns:1fr auto; align-items:end; gap:10px 14px; }
+.magic-code-setting legend { grid-column:1/-1; }
+.magic-code-setting label { min-width:0; }
+.magic-code-setting input { margin-bottom:0; letter-spacing:.35em; }
+.magic-code-setting button { min-height:46px; }
+@media(max-width:700px) {
+  .access-mode main { padding:14px; }
+  .magic-code-card { grid-template-columns:1fr; gap:4px; min-height:calc(100svh - 28px); padding:26px 20px 32px; border-radius:32px; }
+  .magic-code-unicorn img { width:min(55vw,230px); }
+  .magic-code-copy h1 { font-size:clamp(2rem,9vw,3.2rem); margin-bottom:12px; }
+  .magic-code-copy .lead { margin-bottom:18px; }
+  .magic-code-form input { height:66px; }
+  .magic-code-setting { grid-template-columns:1fr; }
+  .magic-code-setting button { width:100%; }
+}
 .presentation { font-size:1.25rem; }.presentation main { max-width:1800px; }.presentation .organizer-only { display:none; }.presentation .primary { font-size:1.2rem; }.presentation .team-card h2 { font-size:clamp(1.4rem,2.4vw,2.4rem); }.presentation .roster strong { font-size:1.7rem; }.presentation .lead { font-size:clamp(1.3rem,2.2vw,2rem); }
 /* The same rounded eyes, cheeks and simple shapes unite the four mascots. */
 .mascot { position:relative; width:155px; height:155px; flex-shrink:0; }

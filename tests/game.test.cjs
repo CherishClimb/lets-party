@@ -7,10 +7,12 @@ const path = require('node:path');
 const G = require('../game.js');
 const root = path.resolve(__dirname,'..');
 
-function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok', musicSetting=null) {
-  const listeners = {}, timers = new Map(), storage = new Map(); let tid=0;
+function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok', musicSetting=null, magicCodeSetting=null, accessUnlocked=true) {
+  const listeners = {}, timers = new Map(), storage = new Map(), session = new Map(); let tid=0;
   if(saved!==undefined) storage.set('unicorn-rescue-v1',saved);
   if(musicSetting!==null) storage.set('unicorn-rescue-music-volume-v1',String(musicSetting));
+  if(magicCodeSetting!==null) storage.set('unicorn-rescue-magic-code-v1',String(magicCodeSetting));
+  if(accessUnlocked) session.set('unicorn-rescue-magic-unlocked-v1','yes');
   const audioInstances=[];
   class FakeAudio {
     constructor(){this.src='';this.preload='';this.currentTime=0;this.volume=1;this.paused=true;this.mode=audioMode;this.playCalls=0;this.pauseCalls=0;this.handlers={};audioInstances.push(this);}
@@ -21,7 +23,7 @@ function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok', 
     pause(){this.pauseCalls++;if(!this.paused){this.paused=true;this.emit('pause');}}
     removeAttribute(name){if(name==='src')this.src='';}
   }
-  const element = () => ({innerHTML:'',textContent:'',open:false,hidden:false,focus(){},querySelector(){return null;},setAttribute(){},classList:{toggle(){},add(){}},handlers:{},addEventListener(type,fn){this.handlers[type]=fn;}});
+  const element = () => ({innerHTML:'',textContent:'',open:false,hidden:false,focus(){},querySelector(){return null;},setAttribute(){},classList:{toggle(){},add(){},remove(){}},handlers:{},addEventListener(type,fn){this.handlers[type]=fn;}});
   const elements = Object.fromEntries(['#app','#header','#footer','#notice','#organizer','.reward'].map(k=>[k,element()]));
   const narrationButton=element(),narrationControls=element();
   narrationControls.querySelector=selector=>selector==='.narration-toggle'?narrationButton:null;
@@ -32,6 +34,7 @@ function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok', 
   const context = {
     console, window:null, document:{title:'',body:element(),querySelector:s=>elements[s],addEventListener:(type,fn)=>listeners[type]=fn},
     localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>{if(storageThrows) throw Error('blocked');storage.set(key,value);}},
+    sessionStorage:{getItem:key=>session.get(key)??null,setItem:(key,value)=>session.set(key,value)},
     setTimeout:fn=>{timers.set(++tid,fn);return tid;},clearTimeout:id=>timers.delete(id),scrollTo(){},
     URL:{createObjectURL:blob=>'blob:'+blob.id,revokeObjectURL(){}},Audio:FakeAudio
   };
@@ -45,6 +48,9 @@ function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok', 
     click(action,data={}) {listeners.click({target:{closest:()=>({dataset:{action,...data},disabled:false})}});},
     input(index,name) {listeners.input({target:{dataset:{child:String(index),field:'name'},value:name}});},
     inputVolume(value) {listeners.input({target:{dataset:{musicVolume:''},value:String(value)}});},
+    inputMagicCodeSetting(value) {const target={dataset:{magicCodeSetting:''},value:String(value)};listeners.input({target});return target.value;},
+    inputMagicCodeEntry(value) {const error=element(),form={querySelector:s=>s==='#magic-code-error'?error:null};const target={dataset:{magicCodeEntry:''},value:String(value),form,removeAttribute(){}};listeners.input({target});return target.value;},
+    submitCode(value) {const error=element(),input={value:String(value),setAttribute(){},focus(){},select(){}};const form={querySelector:s=>s==='[data-magic-code-entry]'?input:s==='#magic-code-error'?error:null};listeners.submit({target:{closest:()=>form},preventDefault(){}});return error.textContent;},
     change(data) {listeners.change({target:data});},
     tick() { const entry=timers.entries().next().value; assert.ok(entry,'expected active animation timer'); timers.delete(entry[0]);entry[1](); },
     timerCount:()=>timers.size,
@@ -52,6 +58,8 @@ function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok', 
     html:()=>elements['#app'].innerHTML,
     serialized:()=>storage.get('unicorn-rescue-v1'),
     musicSetting:()=>storage.get('unicorn-rescue-music-volume-v1'),
+    magicCodeSetting:()=>storage.get('unicorn-rescue-magic-code-v1'),
+    sessionSetting:()=>session.get('unicorn-rescue-magic-unlocked-v1'),
     audio:()=>audioInstances[0],
     music:()=>audioInstances[1],
     audioCount:()=>audioInstances.length,
@@ -62,6 +70,29 @@ function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok', 
 function fill(h) { h.click('go',{screen:'setup'}); h.input(0,'Emma');h.input(4,'Noah');h.input(8,'Mia'); }
 function complete(h,n) { for(const id of G.teamIds) { h.click('mark',{team:id,level:String(n)}); if(n<2) { assert.match(h.html(),/gefunden!/); h.click('go',{screen:'level'+(n+1)}); } } }
 function finishState() {const s=G.fresh();s.children[0].name='Emma';for(let i=0;i<3;i++) for(const id of G.teamIds) G.mark(s,id,i,true);G.revealClue(s);s.treasureFound=true;s.returnInvited=true;return s;}
+
+test('four-digit magic code gates the app without changing saved game progress',()=>{
+  const saved=G.fresh();saved.children[0].name='Emma';
+  const h=harness(JSON.stringify(saved),false,null,'ok',null,null,false);
+  assert.match(h.html(),/Willkommen im Zaubergeburtstag/);assert.match(h.html(),/Gib den Zaubercode ein/);
+  assert.match(h.html(),/type="password"/);assert.match(h.html(),/inputmode="numeric"/);assert.match(h.html(),/maxlength="4"/);
+  assert.match(h.html(),/Zauberwelt öffnen/);assert.equal(h.elements['#header'].innerHTML,'');assert.equal(h.elements['#footer'].innerHTML,'');
+  assert.equal(h.inputMagicCodeEntry('1a23 45'),'1234');
+  assert.equal(h.submitCode('1234'),'Hmm … der Zaubercode stimmt noch nicht ✨');assert.match(h.html(),/Willkommen im Zaubergeburtstag/);
+  assert.equal(h.sessionSetting(),undefined);assert.equal(h.serialized(),JSON.stringify(saved));
+  assert.equal(h.submitCode('0606'),'');assert.equal(h.sessionSetting(),'yes');assert.match(h.html(),/LUCYS 6\. GEBURTSTAG/);
+  assert.equal(h.state().children[0].name,'Emma');
+});
+test('organizer can save a new four-digit magic code for the next session',()=>{
+  const h=harness();h.click('organizer');
+  assert.match(h.elements['#organizer'].innerHTML,/>Zaubercode</);assert.match(h.elements['#organizer'].innerHTML,/data-magic-code-setting/);
+  h.inputMagicCodeSetting('12');h.click('saveMagicCode');assert.equal(h.magicCodeSetting(),undefined);assert.equal(h.elements['#notice'].textContent,'Bitte gib genau 4 Ziffern ein.');
+  assert.equal(h.inputMagicCodeSetting('4x827'),'4827');h.click('saveMagicCode');assert.equal(h.magicCodeSetting(),'4827');
+  assert.equal(h.elements['#notice'].textContent,'Zaubercode gespeichert ✨');
+  const next=harness(undefined,false,null,'ok',null,'4827',false);
+  assert.equal(next.submitCode('0606'),'Hmm … der Zaubercode stimmt noch nicht ✨');
+  next.submitCode('4827');assert.equal(next.sessionSetting(),'yes');assert.match(next.html(),/Ein magisches Abenteuer beginnt/);
+});
 
 test('15 preparation slots provide five empty places per team',()=>{
   const s=G.fresh();assert.equal(s.children.length,15);
