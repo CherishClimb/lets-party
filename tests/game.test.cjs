@@ -144,11 +144,15 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   assert.match(h.html(),/Alle drei Zauberkräfte sind sicher/);assert.equal(h.timerCount(),0);
   assert.doesNotMatch(h.html(),/mascot unicorn|Zaubertrank|Zauberschokolade|Marshmallow/);
   h.click('go',{screen:'finale'});
-  for(let i=0;i<h.context.CONTENT.finale.length;i++) h.click('sceneNext');
-  assert.equal(h.state().currentScreen,'found');assert.match(h.html(),/Aber … wo ist das Einhorn/);assert.match(h.html(),/Ihr habt mich gefunden!/);
+  assert.match(h.html(),/Die Zauberkräfte sind zurück!/);assert.match(h.html(),/final-power-return/);
+  h.click('sceneNext');assert.match(h.html(),/Meine Magie ist wieder da!/);assert.match(h.html(),/final-magic-visual/);
+  h.click('sceneNext');
+  assert.equal(h.state().currentScreen,'found');assert.match(h.html(),/Pssst … ich bin ganz in eurer Nähe/);assert.match(h.html(),/Ihr habt mich gefunden!/);
+  assert.doesNotMatch(h.html(),/magic-unicorn|mascot unicorn/);
   assert.doesNotMatch(h.html(),/Zaubertrank|Zauberschokolade|Marshmallow/);
   h.click('found');assert.equal(h.state().currentScreen,'rescued');
-  assert.match(h.html(),/Das Geburtstagseinhorn ist gerettet/);assert.match(h.html(),/Geheime Team-Belohnungen zeigen/);
+  assert.match(h.html(),/Ihr habt mich gefunden!/);assert.match(h.html(),/Jetzt wird gefeiert!/);assert.match(h.html(),/Geheime Team-Belohnungen zeigen/);
+  assert.match(h.html(),/final-found-visual/);
   h.click('go',{screen:'rewards'});assert.match(h.html(),/Zaubertrank gefunden!/);h.tick();
   h.click('rewardNext');assert.match(h.html(),/Schoko-Schatz gefunden!/);h.tick();
   h.click('rewardNext');assert.match(h.html(),/Wolkenkuss gefunden!/);assert.match(h.html(),/Alle drei Geburtstagsschätze sind zurück!/);assert.match(h.html(),/Jetzt wird gefeiert! 🎉/);h.tick();
@@ -280,8 +284,9 @@ test('story narration and background music have central mappings',()=>{
   assert.equal(c.storyAudio.found,'Assets/Audio/story/final-03.mp3');assert.equal(c.storyAudio.rescued,'Assets/Audio/story/final-04.mp3');
   assert.deepEqual(Array.from(c.storyAudio.rewards),['Assets/Audio/story/treasure-01.mp3','Assets/Audio/story/treasure-02.mp3','Assets/Audio/story/treasure-03.mp3']);
   assert.deepEqual({...c.backgroundMusic},{ambient:'Assets/Audio/story/ambient.mp3',storm:'Assets/Audio/story/storm.mp3',final:'Assets/Audio/story/final.mp3'});
-  assert.equal(c.finale.length,2);assert.equal(c.finale[0].title,'Ihr habt es geschafft!');assert.match(c.finale[0].text,/Mut\.\nZusammenhalt\.\nKlugheit\./);
-  assert.match(c.finale[1].text,/Jetzt kann meine Magie wieder leuchten\./);assert.equal(c.found.title,'Aber … wo ist das Einhorn?');assert.equal(c.rescued.title,'Ihr habt mich gefunden!');
+  assert.equal(c.finale.length,2);assert.equal(c.finale[0].text,'Die Zauberkräfte sind zurück! ✨');assert.equal(c.finale[0].visual,'finalPowers');
+  assert.equal(c.finale[1].text,'Meine Magie ist wieder da! ✨');assert.equal(c.finale[1].visual,'finalMagic');
+  assert.equal(c.found.title,'Pssst … ich bin ganz in eurer Nähe. 👀');assert.equal(c.rescued.title,'Ihr habt mich gefunden! 🦄✨');assert.equal(c.rescued.text,'Jetzt wird gefeiert!');
   for(const [from,to] of Object.entries(c.storyNext)) {
     assert.ok(Array.isArray(c[from]),from);assert.ok(c.screens[to],to);
   }

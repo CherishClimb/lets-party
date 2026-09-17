@@ -252,6 +252,8 @@ function award() {
 }
 
 function visual(type) {
+  if(type==='finalPowers') return '<div class="final-power-return" aria-hidden="true">'+mascot('unicorn','final-power-unicorn')+'<div class="powers final-return-powers">'+powers(null,true)+'</div><span class="final-return-glow"></span></div>';
+  if(type==='finalMagic') return '<div class="final-magic-visual" aria-hidden="true"><span class="final-magic-sparkle sparkle-one">✦</span><span class="final-magic-sparkle sparkle-two">✧</span><span class="final-magic-sparkle sparkle-three">✦</span><span class="final-magic-sparkle sparkle-four">✧</span>'+mascot('unicorn','final-magic-unicorn')+'</div>';
   if(type==='words') return '<div class="destination-parts">'+C.destinationWords.parts.map(w=>'<span>'+esc(w)+'</span>').join('<b>+</b>')+'</div>';
   if(type==='joined'||type==='courtyard') return '<div class="destination-joined">'+esc(C.destinationWords.joined)+(type==='courtyard'?'<strong>'+esc(C.destinationWords.final)+'</strong>':'')+'</div>';
   if(type==='rescueTeams') return '<div class="team-grid intro-teams">'+C.teams.map(t=>teamCard(t,roster(t))).join('')+'</div>';
@@ -303,14 +305,14 @@ function waiting() {
   return heading(C.waiting.title,C.waiting.text)+'<section class="waiting-card">'+powers(null,true)+'<h2>'+esc(C.waiting.readyTitle)+'</h2><p class="lead">'+esc(C.waiting.readyText)+'</p><p>'+esc(C.waiting.hint)+'</p><div class="actions organizer-only">'+nav(U.startFinale,'finale')+'</div></section><div class="actions">'+nav(U.replayDestination,'destination','quiet')+'</div>';
 }
 function found() {
-  return '<section class="celebration">'+heading(C.found.title,C.found.text)+mascot('unicorn')+narrationControls()+'<div class="actions organizer-only">'+button(U.confirmFound,'found')+'</div><p class="helper organizer-only">'+esc(C.found.hint)+'</p></section>';
+  return '<section class="celebration final-search">'+heading(C.found.title)+'<div class="final-search-trail" aria-hidden="true"><span>✦</span><span>·</span><span>✧</span><span>·</span><span>✦</span></div>'+narrationControls()+'<div class="actions organizer-only">'+button(U.confirmFound,'found')+'</div></section>';
 }
 function rewards() {
   const t=C.teams[state.rewardIndex];
   return '<section class="reward-screen '+t.id+'">'+heading(t.reward.unlock,'',fmt(U.rewardCounter,{n:state.rewardIndex+1}))+mascot(t.id)+'<div class="reward '+(rewardShown?'revealed':'')+'"><div class="reward-icon" aria-hidden="true">'+t.reward.icon+'</div><h2>'+esc(t.reward.name)+'</h2><p class="lead">'+esc(t.reward.text)+'</p></div>'+narrationControls()+'<div class="actions">'+button(state.rewardIndex<2?U.nextReward:U.finish,'rewardNext')+'</div></section>';
 }
 function rescued() {
-  return '<section class="celebration">'+heading(C.rescued.title,C.rescued.text)+mascot('unicorn')+narrationControls()+'<div class="actions">'+nav(U.revealRewards,'rewards')+'</div></section>';
+  return '<section class="celebration final-found">'+heading(C.rescued.title,C.rescued.text)+'<div class="final-found-visual" aria-hidden="true">'+mascot('unicorn')+'<span>✦</span><span>✧</span><span>✦</span><span>✧</span><span>✦</span></div>'+narrationControls()+'<div class="actions">'+nav(U.revealRewards,'rewards')+'</div></section>';
 }
 function done() {
   const photoCount=memoryPhotos.length;

@@ -474,18 +474,16 @@ window.CONTENT = {
   },
   "finale": [
     {
-      "visual": "magicTogether",
-      "title": "Ihr habt es geschafft!",
-      "text": "Ihr habt alle drei Zauberkräfte gefunden.\n\nJetzt bringt sie zurück zum Einhorn.\n\nMut.\nZusammenhalt.\nKlugheit.\n\nAlle drei Kräfte sind wieder da."
+      "visual": "finalPowers",
+      "text": "Die Zauberkräfte sind zurück! ✨"
     },
     {
-      "visual": "happy",
-      "text": "Mein Mut ist zurück.\nMein Zusammenhalt ist zurück.\nUnd meine Klugheit ist zurück.\n\nDanke!\nIhr habt das gemeinsam geschafft.\n\nJetzt kann meine Magie wieder leuchten."
+      "visual": "finalMagic",
+      "text": "Meine Magie ist wieder da! ✨"
     }
   ],
   "found": {
-    "title": "Aber … wo ist das Einhorn?",
-    "text": "Hört gut zu.\n\n„Ich bin ganz in eurer Nähe …“\n\nKönnt ihr mich finden?",
+    "title": "Pssst … ich bin ganz in eurer Nähe. 👀",
     "hint": "Erst bestätigen, wenn die Kinder den echten Einhorn-Ballon entdeckt haben."
   },
   "done": {
@@ -581,8 +579,8 @@ window.CONTENT = {
     "Und meine Klugheit ist zurück."
   ],
   "rescued": {
-    "title": "Ihr habt mich gefunden!",
-    "text": "Das Geburtstagseinhorn ist gerettet.\nUnd der Zauberwald ist wieder voller Magie.\n\nJetzt kann die Geburtstagsfeier endlich richtig weitergehen!"
+    "title": "Ihr habt mich gefunden! 🦄✨",
+    "text": "Jetzt wird gefeiert!"
   },
   "storyNext": {
     "intro": "warmup",
