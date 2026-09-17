@@ -31,7 +31,9 @@ test('manifest and iPad metadata describe the local standalone app',()=>{
   assert.match(html,/rel="manifest" href="manifest\.webmanifest"/);
   assert.match(html,/apple-mobile-web-app-capable" content="yes"/);
   assert.match(html,/rel="apple-touch-icon"/);
-  assert.match(fs.readFileSync(path.join(root,'app.js'),'utf8'),/serviceWorker\.register\('\.\/service-worker\.js'/);
+  const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
+  assert.match(app,/serviceWorker\.register\('\.\/service-worker\.js'/);
+  assert.match(app,/postMessage\?\.\(\{type:'REFRESH_AUDIO_CACHE'\}\)/);
 });
 
 test('pre-cache includes every local app asset and every shell file',()=>{
@@ -50,8 +52,9 @@ test('pre-cache includes every local app asset and every shell file',()=>{
   }
 });
 
-test('service worker installs, cleans old caches, serves offline navigation and supports audio ranges',async()=>{
+test('service worker refreshes audio online and falls back to the newest cached copy offline',async()=>{
   const listeners={},cacheStores=new Map(),scope='http://localhost:8080/';
+  const networkOverrides=new Map(),networkRequests=[];
   let skipped=false,claimed=false,networkOnline=true,networkCalls=0;
   const normalize=input=>new URL(typeof input==='string'?input:input.url,scope).href.split('?')[0];
   const mime=file=>file.endsWith('.mp3')?'audio/mpeg':file.endsWith('.png')?'image/png':file.endsWith('.css')?'text/css':'text/plain';
@@ -78,19 +81,44 @@ test('service worker installs, cleans old caches, serves offline navigation and 
     clients:{async claim(){claimed=true;}},async skipWaiting(){skipped=true;},
     addEventListener(type,listener){listeners[type]=listener;}
   };
-  const context={self:workerSelf,caches:cachesMock,URL,Response,Headers,console,
-    fetch:async request=>{networkCalls++;if(!networkOnline) throw new Error('offline');return new Response('network:'+normalize(request),{status:200});}};
+  const context={self:workerSelf,caches:cachesMock,URL,Request,Response,Headers,console,
+    fetch:async request=>{
+      networkCalls++;networkRequests.push({url:normalize(request),cache:request.cache||'',range:request.headers?.get?.('range')||''});
+      if(!networkOnline) throw new Error('offline');
+      const url=normalize(request),body=networkOverrides.get(url)||diskBody(url);
+      return new Response(body,{status:200,headers:{'Content-Type':mime(url)}});
+    }};
   vm.runInNewContext(workerSource,context,{filename:'service-worker.js'});
 
   let pending;
   listeners.install({waitUntil(promise){pending=promise;}});await pending;
-  assert.equal(skipped,true);assert.equal(cacheStores.get('lets-party-v1').size,precacheUrls().length);
-  cacheStores.set('lets-party-old',new Map());
+  assert.equal(skipped,true);assert.equal(cacheStores.get('lets-party-v2').size,precacheUrls().length);
+  const audioPrecache=networkRequests.filter(request=>request.url.endsWith('.mp3'));
+  assert.equal(audioPrecache.length,precacheUrls().filter(url=>url.endsWith('.mp3')).length);
+  assert.ok(audioPrecache.every(request=>request.cache==='no-store'));
+  cacheStores.set('lets-party-v1',new Map());
   listeners.activate({waitUntil(promise){pending=promise;}});await pending;
-  assert.equal(claimed,true);assert.equal(cacheStores.has('lets-party-old'),false);
+  assert.equal(claimed,true);assert.equal(cacheStores.has('lets-party-v1'),false);
+
+  let responsePromise;
+  const replacedUrl=scope+'Assets/Audio/story/scene-01.mp3';
+  networkOverrides.set(replacedUrl,Buffer.from('new narration with unchanged filename'));
+  const refreshStart=networkRequests.length;
+  listeners.message({data:{type:'REFRESH_AUDIO_CACHE'},waitUntil(promise){pending=promise;}});await pending;
+  assert.equal(await (await cacheApi('lets-party-v2').match(replacedUrl)).text(),'new narration with unchanged filename');
+  const refreshRequests=networkRequests.slice(refreshStart);
+  assert.equal(refreshRequests.length,precacheUrls().filter(url=>url.endsWith('.mp3')).length);
+  assert.ok(refreshRequests.every(request=>request.cache==='no-store'));
+
+  listeners.fetch({request:{method:'GET',mode:'cors',url:replacedUrl,headers:new Headers()},respondWith(promise){responsePromise=promise;}});
+  assert.equal(await (await responsePromise).text(),'new narration with unchanged filename');
+  const freshRequest=networkRequests.at(-1);
+  assert.equal(freshRequest.cache,'no-store');assert.equal(freshRequest.range,'');
 
   networkOnline=false;
-  let responsePromise;
+  listeners.fetch({request:{method:'GET',mode:'cors',url:replacedUrl,headers:new Headers()},respondWith(promise){responsePromise=promise;}});
+  assert.equal(await (await responsePromise).text(),'new narration with unchanged filename');
+
   listeners.fetch({request:{method:'GET',mode:'navigate',url:scope+'some/offline/page',headers:new Headers()},respondWith(promise){responsePromise=promise;}});
   const navigation=await responsePromise;
   assert.match(await navigation.text(),/<!doctype html>/i);
@@ -100,5 +128,6 @@ test('service worker installs, cleans old caches, serves offline navigation and 
   const audio=await responsePromise;
   assert.equal(audio.status,206);assert.equal(audio.headers.get('Content-Range'),'bytes 10-19/1423302');
   assert.equal((await audio.arrayBuffer()).byteLength,10);
-  assert.equal(networkCalls,callsBefore,'cached audio does not use the network');
+  assert.equal(networkCalls,callsBefore+1,'audio tries the network before using its cached fallback');
+  assert.equal(networkRequests.at(-1).cache,'no-store');assert.equal(networkRequests.at(-1).range,'');
 });

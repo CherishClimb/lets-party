@@ -2,7 +2,7 @@
 'use strict';
 
 const APP_CACHE_PREFIX = 'lets-party-';
-const CACHE_NAME = 'lets-party-v1';
+const CACHE_NAME = 'lets-party-v2';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -51,13 +51,23 @@ const PRECACHE_URLS = [
   './Assets/pose 9.png',
   './Assets/team-characters.png'
 ];
+const AUDIO_URLS = PRECACHE_URLS.filter(url=>url.toLowerCase().endsWith('.mp3'));
+const STATIC_URLS = PRECACHE_URLS.filter(url=>!url.toLowerCase().endsWith('.mp3'));
 
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
     const cache=await caches.open(CACHE_NAME);
-    await cache.addAll(PRECACHE_URLS);
+    await cache.addAll(STATIC_URLS);
+    await Promise.all(AUDIO_URLS.map(async url=>{
+      const response=await fetchFreshAudio(url);
+      await cache.put(new URL(url,self.registration.scope).href,response);
+    }));
     await self.skipWaiting();
   })());
+});
+
+self.addEventListener('message',event=>{
+  if(event.data?.type==='REFRESH_AUDIO_CACHE') event.waitUntil(refreshAudioCache());
 });
 
 self.addEventListener('activate',event=>{
@@ -75,6 +85,10 @@ self.addEventListener('fetch',event=>{
   if(request.method!=='GET') return;
   const url=new URL(request.url);
   if(url.origin!==self.location.origin) return;
+  if(url.pathname.toLowerCase().endsWith('.mp3')) {
+    event.respondWith(networkFirstAudio(request));
+    return;
+  }
   event.respondWith(request.mode==='navigate'?navigationResponse(request):cacheFirst(request));
 });
 
@@ -97,6 +111,35 @@ async function cacheFirst(request) {
   const response=await fetch(request);
   if(response.ok&&response.status===200) await cache.put(request,response.clone());
   return response;
+}
+
+async function networkFirstAudio(request) {
+  const cache=await caches.open(CACHE_NAME);
+  try {
+    const response=await fetchFreshAudio(request.url);
+    await cache.put(request.url,response.clone());
+    return rangedResponse(request,response);
+  } catch {
+    const cached=await cache.match(request,{ignoreSearch:true});
+    if(cached) return rangedResponse(request,cached);
+    return new Response(null,{status:503,statusText:'Audio unavailable offline'});
+  }
+}
+
+async function fetchFreshAudio(url) {
+  const freshRequest=new Request(new URL(url,self.registration.scope),{method:'GET',cache:'no-store',credentials:'same-origin'});
+  const response=await fetch(freshRequest);
+  if(!response.ok||response.status!==200) throw new Error('Audio network response was not complete');
+  return response;
+}
+
+async function refreshAudioCache() {
+  const cache=await caches.open(CACHE_NAME);
+  await Promise.allSettled(AUDIO_URLS.map(async url=>{
+    const absolute=new URL(url,self.registration.scope).href;
+    const response=await fetchFreshAudio(absolute);
+    await cache.put(absolute,response);
+  }));
 }
 
 async function rangedResponse(request,response) {

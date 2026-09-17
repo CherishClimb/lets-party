@@ -138,8 +138,12 @@ function setupOfflineSupport() {
   navigator.serviceWorker.addEventListener?.('controllerchange',()=>{ready=true;showStatus();});
   window.addEventListener?.('load',()=>{
     navigator.serviceWorker.register('./service-worker.js',{scope:'./'})
-      .then(()=>navigator.serviceWorker.ready)
-      .then(()=>{ready=true;showStatus();})
+      .then(registration=>navigator.serviceWorker.ready.then(()=>registration))
+      .then(registration=>{
+        ready=true;showStatus();
+        const worker=navigator.serviceWorker.controller||registration.active||registration.waiting;
+        worker?.postMessage?.({type:'REFRESH_AUDIO_CACHE'});
+      })
       .catch(()=>{});
   });
 }
