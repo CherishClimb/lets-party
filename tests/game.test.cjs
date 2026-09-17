@@ -59,10 +59,24 @@ function fill(h) { h.click('go',{screen:'setup'}); h.input(0,'Emma');h.input(4,'
 function complete(h,n) { for(const id of G.teamIds) { h.click('mark',{team:id,level:String(n)}); if(n<2) { assert.match(h.html(),/gefunden!/); h.click('go',{screen:'level'+(n+1)}); } } }
 function finishState() {const s=G.fresh();s.children[0].name='Emma';for(let i=0;i<3;i++) for(const id of G.teamIds) G.mark(s,id,i,true);G.revealClue(s);s.treasureFound=true;s.returnInvited=true;return s;}
 
-test('12 slots, four default places per team, empty places allowed',()=>{
-  const s=G.fresh();assert.equal(s.children.length,12);
-  for(const id of G.teamIds) assert.equal(s.children.filter(c=>c.teamId===id).length,4);
+test('12 active slots default to four places per team with room to expand to 15',()=>{
+  const s=G.fresh();assert.equal(s.participantCount,12);assert.equal(s.children.length,15);
+  for(const id of G.teamIds) assert.equal(s.children.slice(0,s.participantCount).filter(c=>c.teamId===id).length,4);
   assert.ok(s.children.every(c=>!c.name));
+});
+test('6 to 15 children distribute evenly and calculate team mats for both rounds',()=>{
+  const expected={12:[4,4,4],13:[5,4,4],14:[5,5,4],15:[5,5,5]};
+  for(let total=6;total<=15;total++) {
+    const s=G.fresh(total);
+    s.children.slice(0,total).forEach((child,i)=>child.name='Kind '+(i+1));
+    const sizes=G.teamIds.map(id=>G.teamSize(s,id));
+    assert.equal(sizes.reduce((sum,n)=>sum+n,0),total);
+    assert.ok(Math.max(...sizes)-Math.min(...sizes)<=1,'uneven teams for '+total);
+    assert.equal(new Set(s.children.slice(0,total).map(child=>child.id)).size,total);
+    assert.deepEqual(G.teamIds.map(id=>G.matsFor(s,id,0)),sizes.map(n=>n+1));
+    assert.deepEqual(G.teamIds.map(id=>G.matsFor(s,id,1)),sizes);
+    if(expected[total]) assert.deepEqual(sizes,expected[total]);
+  }
 });
 test('finale eligibility is exactly all nine completions across 512 combinations',()=>{
   for(let mask=0;mask<512;mask++) {
@@ -99,7 +113,15 @@ test('stored data is normalized and invalid screens cannot bypass gates',()=>{
   assert.equal(s.teams.monster.gesture,null);assert.deepEqual(s.teams.monster.completedLevels,[false,true,false]);
   assert.throws(()=>G.normalize({}));
 });
-test('home and setup follow the storybook team layout without changing the 12 slots',()=>{
+test('existing 12-child saves gain the extra slots without losing setup data',()=>{
+  const previous=G.fresh();delete previous.participantCount;previous.children=previous.children.slice(0,12);
+  previous.children[0].name='Emma';previous.children[0].icon='moon';previous.children[0].teamId='crocodile';
+  const migrated=G.normalize(previous);
+  assert.equal(migrated.participantCount,12);assert.equal(migrated.children.length,15);
+  assert.deepEqual(migrated.children[0],{id:'child-1',name:'Emma',icon:'moon',teamId:'crocodile'});
+  assert.deepEqual(migrated.children.slice(12).map(child=>child.teamId),['monster','octopus','crocodile']);
+});
+test('home and setup keep the storybook team layout with 12 slots visible by default',()=>{
   const h=harness();
   assert.match(h.html(),/LUCYS 6\. GEBURTSTAG/);
   assert.match(h.html(),/Ein magisches Abenteuer beginnt/);
@@ -108,6 +130,22 @@ test('home and setup follow the storybook team layout without changing the 12 sl
   assert.equal((h.html().match(/class="setup-team /g)||[]).length,3);
   assert.equal((h.html().match(/data-field="name"/g)||[]).length,12);
   assert.match(h.html(),/Die kleinen Monster/);assert.match(h.html(),/Die kleinen Oktopusse/);assert.match(h.html(),/Die kleinen Krokodile/);
+});
+test('13 children work from team preparation through both dynamic mat rounds',()=>{
+  const h=harness();h.click('go',{screen:'setup'});
+  h.change({dataset:{childCount:''},value:'13'});
+  assert.equal((h.html().match(/data-field="name"/g)||[]).length,13);
+  for(let i=0;i<13;i++) h.input(i,'Kind '+(i+1));
+  const prepared=h.state(),active=prepared.children.slice(0,prepared.participantCount);
+  assert.equal(prepared.participantCount,13);assert.equal(new Set(active.map(child=>child.id)).size,13);
+  assert.deepEqual(G.teamIds.map(id=>G.teamSize(prepared,id)),[5,4,4]);
+  h.click('go',{screen:'reveal'});assert.match(h.html(),/Kind 13/);
+  h.click('go',{screen:'level1'});
+  assert.equal((h.html().match(/Für euer Team: 6 Matten/g)||[]).length,1);
+  assert.equal((h.html().match(/Für euer Team: 5 Matten/g)||[]).length,2);
+  complete(h,0);h.click('go',{screen:'level2'});
+  assert.equal((h.html().match(/Für euer Team: 5 Matten/g)||[]).length,1);
+  assert.equal((h.html().match(/Für euer Team: 4 Matten/g)||[]).length,2);
 });
 test('full birthday adventure: powers, schoolyard treasure, return, balloon, snacks and birthday image',()=>{
   const h=harness();fill(h);h.click('go',{screen:'reveal'});
@@ -125,7 +163,7 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   assert.doesNotMatch(h.html(),/type="file"|capture=/);
   h.click('go',{screen:'level1'});complete(h,0);
   assert.equal(h.state().currentScreen,'level1');
-  h.click('go',{screen:'transition2'});assert.equal(h.timerCount(),0);h.click('sceneNext');assert.match(h.html(),/NUR NOCH 4 MATTEN/);
+  h.click('go',{screen:'transition2'});assert.equal(h.timerCount(),0);h.click('sceneNext');assert.match(h.html(),/EINE MATTE WENIGER/);
   h.click('sceneNext');assert.equal(h.state().currentScreen,'level2');complete(h,1);
   h.click('go',{screen:'transition3'});assert.match(h.html(),/geheime Spur/);h.click('sceneNext');
   assert.equal(h.state().currentScreen,'level3');
@@ -229,7 +267,7 @@ test('moving a child and choosing an icon persist independently of team completi
   const loaded=harness(h.serialized());
   assert.equal(loaded.state().children[0].teamId,'octopus');
   assert.equal(loaded.state().children[0].icon,'moon');
-  assert.equal(loaded.state().children.length,12);
+  assert.equal(loaded.state().children.length,15);assert.equal(loaded.state().participantCount,12);
 });
 test('warm-up shows one team with three fixed pose cards and keeps the saved-state shape',()=>{
   const h=harness();fill(h);h.click('go',{screen:'warmup'});
@@ -342,7 +380,7 @@ test('automatic story navigation follows safe story scenes and stops at confirma
   const transition=harness(JSON.stringify(transitionState));
   transition.click('organizer');transition.change({dataset:{storyMode:'automatic'},checked:true});transition.click('close');
   assert.equal(transition.timerCount(),1);
-  transition.tick();assert.match(transition.html(),/NUR NOCH 4 MATTEN/);
+  transition.tick();assert.match(transition.html(),/EINE MATTE WENIGER/);
   assert.equal(transition.timerCount(),1);
   transition.tick();assert.equal(transition.state().currentScreen,'level2');
   assert.equal(transition.timerCount(),0,'mission pages never schedule automatic navigation');

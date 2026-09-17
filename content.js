@@ -195,8 +195,8 @@ window.CONTENT = {
     "reveal": "Unsere Rettungsteams",
     "intro": "Die Geschichte",
     "warmup": "Unser Teamzeichen",
-    "level1": "Level 1 · 5 Matten",
-    "level2": "Level 2 · 4 Matten",
+    "level1": "Level 1 · Regenbogenweg",
+    "level2": "Level 2 · Regenbogenweg",
     "level3": "Level 3 · Buchstabensuche",
     "destination": "Der nächste Ort",
     "waiting": "Bis zum Finale",
@@ -267,6 +267,7 @@ window.CONTENT = {
     "slot": "Kind {n}",
     "empty": "Name (optional)",
     "childrenCount": "{n} Kinder dabei",
+    "teamMats": "Für euer Team: {n} Matten",
     "noChildren": "Hier ist noch niemand eingetragen.",
     "childRequired": "Trage mindestens ein Kind ein.",
     "saved": "Automatisch gespeichert",
@@ -324,8 +325,9 @@ window.CONTENT = {
   },
   "setup": {
     "title": "Wer rettet das Einhorn?",
-    "text": "12 Plätze, drei Rettungsteams. Leere Plätze sind völlig okay.",
-    "help": "Vier Plätze pro Team sind vorbereitet. Du kannst jedes Kind einem anderen Team zuordnen."
+    "text": "Bis zu 15 Kinder, drei Rettungsteams. Leere Plätze sind völlig okay.",
+    "countLabel": "Wie viele Kinder sind dabei?",
+    "help": "Die Plätze werden möglichst gleichmäßig verteilt. Du kannst jedes Kind einem anderen Team zuordnen."
   },
   "reveal": {
     "title": "Das sind unsere Rettungsteams!",
@@ -405,29 +407,27 @@ window.CONTENT = {
   "levels": [
     {
       "title": "Der Regenbogenweg",
-      "subtitle": "5 Matten · Ein mutiger erster Schritt",
+      "subtitle": "Ein mutiger erster Schritt",
       "story": "Der Regenbogenweg ist kaputt. Könnt ihr gemeinsam ans andere Ufer kommen?",
-      "organizer": "Jedes Team bekommt 5 Matten. Nach dem gemeinsamen Überqueren die Aufgabe als geschafft markieren.",
+      "organizer": "Die passende Mattenzahl steht bei jedem Team. Nach dem gemeinsamen Überqueren die Aufgabe als geschafft markieren.",
       "rules": [
         "Ihr dürft den Boden nicht berühren.",
         "Bleibt als Team zusammen.",
         "Gebt die hintere Matte nach vorne.",
         "Kommt gemeinsam ans Ziel."
-      ],
-      "mats": 5
+      ]
     },
     {
       "title": "Der Sturm ist zurück!",
-      "subtitle": "5 → 4 Matten · Gemeinsam schafft ihr das",
-      "story": "Oh nein! Der Zaubersturm hat eine Regenbogenmatte weggeweht! Schafft ihr den Weg jetzt auch mit nur 4 Matten?",
-      "organizer": "Eine Matte pro Team wegnehmen. Jetzt stehen jedem Team nur 4 Matten zur Verfügung.",
+      "subtitle": "Eine Matte weniger · Gemeinsam schafft ihr das",
+      "story": "Oh nein! Der Zaubersturm hat eine Regenbogenmatte weggeweht! Schafft ihr den Weg jetzt noch einmal?",
+      "organizer": "Eine Matte pro Team wegnehmen. Die passende Mattenzahl steht bei jedem Team.",
       "rules": [
         "Ihr dürft den Boden nicht berühren.",
-        "Jetzt habt ihr nur 4 Matten.",
+        "Jetzt habt ihr eine Matte weniger.",
         "Helft euch gegenseitig.",
         "Kommt wieder gemeinsam ans Ziel."
-      ],
-      "mats": 4
+      ]
     },
     {
       "title": "Die Buchstaben-Schatzsuche",
@@ -535,7 +535,7 @@ window.CONTENT = {
     },
     {
       "visual": "fourMats",
-      "title": "NUR NOCH 4 MATTEN!",
+      "title": "EINE MATTE WENIGER!",
       "text": "Findet die Zauberkraft Zusammenhalt.",
       "duration": 3500
     }

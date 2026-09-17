@@ -20,13 +20,13 @@ The computer must stay on. The TV simply mirrors the organizer's device.
 
 ## Party flow
 
-1. Fill any of the 12 slots, choose icons, and adjust teams. Empty places are fine.
+1. Choose 6–15 child slots, fill the names, choose icons, and adjust teams. Empty places are fine.
 2. Reveal the teams and play the birthday intro (about 74 seconds of content,
    ending at the rescue invitation). The warm-up shows one team at a time. Each team
    completes its three illustrated poses and marks each one **Fertig**.
-3. Run the 5-mat challenge. Every completed team gets a Mut reward moment.
+3. Run the first mat challenge with one more mat than children in each team. Every completed team gets a Mut reward moment.
    The last team's moment also celebrates MUT IST ZURÜCK.
-4. Show the storm transition and run the 4-mat challenge for Zusammenhalt.
+4. Show the storm transition and run the second challenge with one mat per child for Zusammenhalt.
 5. Show the secret-clue transition and run the physical word search. Words remain
    hidden on task cards. Gather the children and press ZAUBERWÖRTER VERBINDEN.
    The words combine, HOF appears, and all teams receive Klugheit.

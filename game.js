@@ -3,11 +3,15 @@
   'use strict';
   const teamIds = ['monster', 'octopus', 'crocodile'];
   const iconIds = ['star','moon','rainbow','heart','cloud','sun','diamond','flower','butterfly','lightning','wand','leaf','comet','crown','gem'];
+  const minChildren = 6, maxChildren = 15, defaultChildren = 12;
   const screens = ['home','setup','reveal','intro','warmup','level1','transition2','level2','transition3','level3','award','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done','progress'];
-  function fresh() {
+  const childCount = value => Math.max(minChildren,Math.min(maxChildren,Number.isInteger(value)?value:defaultChildren));
+  function fresh(participantCount=defaultChildren) {
+    participantCount=childCount(participantCount);
     return {
       version:2,
-      children:Array.from({length:12},(_,i)=>({id:'child-'+(i+1),name:'',icon:iconIds[i],teamId:teamIds[Math.floor(i/4)]})),
+      participantCount,
+      children:Array.from({length:maxChildren},(_,i)=>({id:'child-'+(i+1),name:'',icon:iconIds[i],teamId:teamIds[i%teamIds.length]})),
       teams:Object.fromEntries(teamIds.map(id=>[id,{gesture:null,completedLevels:[false,false,false]}])),
       currentScreen:'home',introCompleted:false,clueRevealed:false,treasureFound:false,
       returnInvited:false,rescued:false,birthdayComplete:false,rewardIndex:0,award:null
@@ -15,6 +19,8 @@
   }
   const allComplete = (s,level) => teamIds.every(id=>s.teams[id].completedLevels[level]);
   const allTasksComplete = s => [0,1,2].every(i=>allComplete(s,i));
+  const teamSize = (s,id) => teamIds.includes(id)?s.children.slice(0,childCount(s.participantCount)).filter(c=>c.teamId===id&&c.name.trim()).length:0;
+  const matsFor = (s,id,round) => [0,1].includes(round)?teamSize(s,id)+(round===0?1:0):null;
   const earned = (s,id,level) => s.teams[id].completedLevels[level] && (level!==2 || s.clueRevealed);
   const eligible = s => allTasksComplete(s) && s.clueRevealed;
   const levelOpen = (s,level) => Array.from({length:level},(_,i)=>i).every(i=>allComplete(s,i));
@@ -33,7 +39,8 @@
   }
   function normalize(input) {
     if (!input || ![1,2].includes(input.version) || !Array.isArray(input.children)) throw Error('invalid-state');
-    const s=fresh();
+    const savedCount=Number.isInteger(input.participantCount)?input.participantCount:input.children.length;
+    const s=fresh(savedCount);
     s.children.forEach((child,i)=>{
       const c=input.children[i];
       if (!c || typeof c!=='object') return;
@@ -74,6 +81,6 @@
     if (!canVisit(s,s.currentScreen)) s.currentScreen='progress';
     return true;
   }
-  root.Game={teamIds,fresh,normalize,allComplete,allTasksComplete,earned,eligible,levelOpen,canVisit,mark,revealClue};
+  root.Game={teamIds,minChildren,maxChildren,fresh,normalize,teamSize,matsFor,allComplete,allTasksComplete,earned,eligible,levelOpen,canVisit,mark,revealClue};
   if (typeof module!=='undefined') module.exports=root.Game;
 })(globalThis);

@@ -11,7 +11,8 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;'
 const fmt = (text, args) => text.replace(/\{(\w+)\}/g, (_,key) => args[key] ?? '');
 const icon = id => C.icons.find(x=>x[0]===id)?.[1] || C.icons[0][1];
 const team = id => C.teams.find(t=>t.id===id);
-const children = id => state.children.filter(c=>c.teamId===id && c.name.trim());
+const activeChildren = () => state.children.slice(0,state.participantCount);
+const children = id => activeChildren().filter(c=>c.teamId===id && c.name.trim());
 const count = id => C.powers.filter((_,i)=>G.earned(state,id,i)).length;
 const introStormVisuals = new Set(['storm','lost','rescueTeams']);
 const birthdayScreens = new Set(['home','reveal','warmup','award','rescued','rewards','done']);
@@ -230,7 +231,7 @@ function sceneDecor(flags=sceneFlags(),sunnyReturn=false) {
 }
 function go(screen) {
   if (!G.canVisit(state,screen)) { note(U.locked); return; }
-  if (['reveal','intro','warmup','level1'].includes(screen) && !state.children.some(c=>c.name.trim())) { note(U.childRequired); screen='setup'; }
+  if (['reveal','intro','warmup','level1'].includes(screen) && !activeChildren().some(c=>c.name.trim())) { note(U.childRequired); screen='setup'; }
   if (screen==='progress' && state.currentScreen!=='progress') returnScreen=state.currentScreen;
   cancelTimer(); scene=0; rewardShown=false;
   if(screen==='warmup') {
@@ -263,13 +264,14 @@ function teamCard(t, body, cls='') {
 }
 function home() {
   const h=C.home;
-  const hasChildren=state.children.some(c=>c.name.trim());
+  const hasChildren=activeChildren().some(c=>c.name.trim());
   return '<section class="home-hero"><div class="hero-copy"><p class="eyebrow">'+esc(h.tag)+'</p><h1>'+esc(h.title).replace('\n','<br>')+'</h1><p class="lead">'+esc(h.text)+'</p><div class="actions">'+(hasChildren?button(U.resume,'resume')+nav(U.preparation,'setup','quiet'):nav(U.startSetup,'setup'))+'</div></div><div class="hero-art"><div class="rainbow"></div><div class="cloud c1"></div><div class="cloud c2"></div><span class="birthday-sprite birthday-balloons-asset" aria-hidden="true"></span>'+mascot('unicorn','hero-unicorn')+'<span class="floating-star">✦</span><div class="mission"><p class="eyebrow">'+esc(h.mission)+'</p>'+powers(null,true)+'</div></div></section><section class="team-preview"><p class="eyebrow">'+esc(U.rescueTeams)+'</p><div class="team-grid home-teams">'+C.teams.map(t=>teamCard(t,'<p>'+esc(fmt(U.childrenCount,{n:children(t.id).length}))+'</p>')).join('')+'</div></section>';
 }
 function setup() {
   const childSlot=(c,i)=>'<article class="child-slot '+c.teamId+'"><div class="slot-heading"><span>'+esc(fmt(U.slot,{n:i+1}))+'</span><span aria-hidden="true">'+icon(c.icon)+'</span></div><label>'+esc(U.name)+'<input data-child="'+i+'" data-field="name" value="'+esc(c.name)+'" placeholder="'+esc(U.empty)+'" maxlength="40" autocomplete="off"></label><div class="field-pair"><label>'+esc(U.icon)+'<select data-child="'+i+'" data-field="icon">'+C.icons.map(x=>'<option value="'+x[0]+'"'+(x[0]===c.icon?' selected':'')+'>'+x[1]+' '+esc(x[2])+'</option>').join('')+'</select></label><label>'+esc(U.team)+'<select data-child="'+i+'" data-field="teamId">'+C.teams.map(t=>'<option value="'+t.id+'"'+(t.id===c.teamId?' selected':'')+'>'+esc(t.short)+'</option>').join('')+'</select></label></div></article>';
-  const groups=C.teams.map(t=>'<section class="setup-team '+t.id+'"><div class="setup-team-heading">'+mascot(t.id)+'<div><p class="eyebrow">'+esc(U.rescueTeam)+'</p><h2>'+esc(t.name)+'</h2></div></div><div class="setup-team-slots">'+state.children.map((c,i)=>c.teamId===t.id?childSlot(c,i):'').join('')+'</div></section>').join('');
-  return '<section class="setup-page">'+heading(C.setup.title,C.setup.text)+'<p class="helper">'+esc(C.setup.help)+'</p><div class="setup-teams">'+groups+'</div><div class="actions">'+nav(U.begin,'reveal')+'</div></section>';
+  const countSelect='<label class="setup-count">'+esc(C.setup.countLabel)+'<select data-child-count>'+Array.from({length:G.maxChildren-G.minChildren+1},(_,i)=>G.minChildren+i).map(n=>'<option value="'+n+'"'+(n===state.participantCount?' selected':'')+'>'+n+'</option>').join('')+'</select></label>';
+  const groups=C.teams.map(t=>'<section class="setup-team '+t.id+'"><div class="setup-team-heading">'+mascot(t.id)+'<div><p class="eyebrow">'+esc(U.rescueTeam)+'</p><h2>'+esc(t.name)+'</h2></div></div><div class="setup-team-slots">'+activeChildren().map((c,i)=>c.teamId===t.id?childSlot(c,i):'').join('')+'</div></section>').join('');
+  return '<section class="setup-page">'+heading(C.setup.title,C.setup.text)+countSelect+'<p class="helper">'+esc(C.setup.help)+'</p><div class="setup-teams">'+groups+'</div><div class="actions">'+nav(U.begin,'reveal')+'</div></section>';
 }
 function reveal() {
   return heading(C.reveal.title,C.reveal.text)+'<div class="team-grid reveal">'+C.teams.map(t=>teamCard(t,roster(t))).join('')+'</div><div class="actions">'+nav(U.next,'intro')+'</div>';
@@ -283,9 +285,11 @@ function warmup() {
 }
 function level(index) {
   const l=C.levels[index];
-  return '<section class="outdoor-level">'+heading(l.title,'',fmt(U.levelLabel,{n:index+1})+' · '+U.outdoor)+journeyPowers()+'<section class="rule-card"><div><h2>'+esc(l.subtitle)+'</h2><ul class="rules">'+l.rules.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ul></div>'+(l.mats?'<div class="mat-illustration" aria-hidden="true">'+Array.from({length:5},(_,i)=>'<span class="mat '+(i>=l.mats?'blown':'')+'">'+(i+1)+'</span>').join('')+'</div>':'<div class="search-symbol" aria-hidden="true">✧ ? ✧</div>')+'</section><p class="helper organizer-only">'+esc(l.organizer)+'</p><div class="team-grid compact">'+C.teams.map(t=>{
+  return '<section class="outdoor-level">'+heading(l.title,'',fmt(U.levelLabel,{n:index+1})+' · '+U.outdoor)+journeyPowers()+'<section class="rule-card"><div><h2>'+esc(l.subtitle)+'</h2><ul class="rules">'+l.rules.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ul></div>'+(index===2?'<div class="search-symbol" aria-hidden="true">✧ ? ✧</div>':'')+'</section><p class="helper organizer-only">'+esc(l.organizer)+'</p><div class="team-grid compact">'+C.teams.map(t=>{
     const done=state.teams[t.id].completedLevels[index];
-    return teamCard(t,(index===2?'<p>'+esc(U.missingPart)+'</p><div class="word-slots" aria-label="'+esc(fmt(U.wordSlots,{n:t.word.length}))+'">'+Array.from(t.word,()=>'<span aria-hidden="true"></span>').join('')+'</div>':'')+powers(t.id)+'<p class="team-status">'+esc(done?(index===2?U.wordsReturned:fmt(U.powerRestored,{power:C.powers[index].name})):U.pending)+'</p><div class="organizer-only">'+button(done?U.undo:index===2?U.wordFound:U.complete,'mark','data-team="'+t.id+'" data-level="'+index+'"',done?'quiet':'primary')+'</div>',done?'complete':'');
+    const matCount=index<2?G.matsFor(state,t.id,index):null;
+    const matInfo=index<2?'<div class="team-mat-count"><p>'+esc(fmt(U.teamMats,{n:matCount}))+'</p><div class="team-mats" aria-hidden="true">'+Array.from({length:matCount},()=>'<span></span>').join('')+'</div></div>':'';
+    return teamCard(t,matInfo+(index===2?'<p>'+esc(U.missingPart)+'</p><div class="word-slots" aria-label="'+esc(fmt(U.wordSlots,{n:t.word.length}))+'">'+Array.from(t.word,()=>'<span aria-hidden="true"></span>').join('')+'</div>':'')+powers(t.id)+'<p class="team-status">'+esc(done?(index===2?U.wordsReturned:fmt(U.powerRestored,{power:C.powers[index].name})):U.pending)+'</p><div class="organizer-only">'+button(done?U.undo:index===2?U.wordFound:U.complete,'mark','data-team="'+t.id+'" data-level="'+index+'"',done?'quiet':'primary')+'</div>',done?'complete':'');
   }).join('')+'</div><div class="actions">'+nav(index===2?U.revealDestination:U.next,index===2?'destination':'transition'+(index+2),'primary',!G.allComplete(state,index))+'</div>'+(!G.allComplete(state,index)?'<p class="helper">'+esc(U.waitTeams)+'</p>':'')+'</section>';
 }
 function progress() {
@@ -310,7 +314,7 @@ function visual(type) {
   if(type==='pause') return '<div class="pause-spark" aria-hidden="true">✧</div>';
   if(type==='magicPowers'||type==='magicTogether') return '<div class="scene-powers '+type+'">'+powers(null,true)+'</div>';
   if(type==='restoredPowers') return '<div class="restored-lines">'+C.powers.map((p,i)=>'<p><span aria-hidden="true">'+p.icon+'</span>'+esc(C.restoredPowers[i])+'</p>').join('')+'</div>';
-  if(type==='fourMats') return '<div class="wind-mats" aria-hidden="true"><div class="cloud"></div>'+Array.from({length:5},(_,i)=>'<span class="mat '+(i===4?'flies-away':'')+'">'+(i+1)+'</span>').join('')+'</div>';
+  if(type==='fourMats') return '<div class="wind-mats" aria-hidden="true"><div class="cloud"></div><span class="mat">✦</span><span class="mat">✦</span><span class="mat flies-away">−1</span></div>';
   if(type==='clue') return '<div class="clue-art" aria-hidden="true">✧ <span>?</span> ✧</div>';
   if(type==='treasure') return '<div class="treasure-art" aria-hidden="true"><span>✦</span><img class="treasure-image" src="'+esc(C.assets.magic.treasure)+'" alt=""><span>✧</span></div>';
   if(type==='message') return '<div class="message-art" aria-hidden="true">✉<span>✦</span></div>';
@@ -491,6 +495,7 @@ document.addEventListener('input',event=>{
 document.addEventListener('change',event=>{
   const el=event.target;
   if(el.dataset.storyMode&&el.checked) {storyNavigation=el.dataset.storyMode==='automatic'?'automatic':'manual';cancelTimer();return;}
+  if(el.dataset.childCount!==undefined) {state.participantCount=Math.max(G.minChildren,Math.min(G.maxChildren,Number(el.value)));save();render();return;}
   if(el.dataset.photoInput!==undefined) {void processPhotoFiles(el.files);el.value='';return;}
   if(el.dataset.photoReplace!==undefined) {void processPhotoFiles(el.files,el.dataset.photoReplace);el.value='';return;}
   if(el.dataset.child!==undefined) {
