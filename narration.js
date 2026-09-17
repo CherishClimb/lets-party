@@ -100,8 +100,8 @@
       this.status='idle';
       this.enabled=true;
       this.ducked=false;
-      this.normalVolume=.13;
-      this.duckVolume=.08;
+      this.normalVolume=.10;
+      this.duckRatio=.6;
       this.fadeToken=0;
       this.changing=false;
       this.listener=()=>{};
@@ -134,9 +134,17 @@
       this.listener=typeof listener==='function'?listener:()=>{};
       this.emit();
     }
-    snapshot() { return {...this.current,status:this.status,supported:!!this.audio,volume:this.audio?.volume??0,ducked:this.ducked,enabled:this.enabled}; }
+    snapshot() { return {...this.current,status:this.status,supported:!!this.audio,volume:this.audio?.volume??0,normalVolume:this.normalVolume,ducked:this.ducked,enabled:this.enabled}; }
     emit() { this.listener(this.snapshot()); }
-    targetVolume() { return this.ducked?this.duckVolume:this.normalVolume; }
+    targetVolume() { return this.ducked?this.normalVolume*this.duckRatio:this.normalVolume; }
+    setVolume(volume) {
+      const next=Math.max(0,Math.min(.3,Number(volume)));
+      if(!Number.isFinite(next)) return;
+      this.normalVolume=next;
+      this.fadeToken++;
+      if(this.audio) this.audio.volume=this.targetVolume();
+      this.emit();
+    }
     fadeTo(target,duration,onDone=()=>{}) {
       if(!this.audio) return;
       const token=++this.fadeToken,start=this.audio.volume,raf=root.requestAnimationFrame?.bind(root);

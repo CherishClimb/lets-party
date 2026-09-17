@@ -4,9 +4,10 @@
 const C = window.CONTENT, G = window.Game, P = window.PhotoStore, N = window.StoryNarration, M = window.BackgroundMusic, U = C.ui;
 const app = document.querySelector('#app'), dialog = document.querySelector('#organizer');
 const STORAGE_KEY = 'unicorn-rescue-v1';
+const MUSIC_VOLUME_KEY = 'unicorn-rescue-music-volume-v1';
 let state = G.fresh(), storageError = '', presentation = false, storyNavigation = 'manual', scene = 0, timer = null, celebrationTimer = null, finalCelebrating = false, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0, lastStorm = null, memoryPhotos = [], photosReady = false;
 const warmupPoses = Object.fromEntries(C.teams.map(t=>[t.id,[false,false,false]]));
-const sequence = ['home','setup','reveal','intro','warmup','level1','transition2','level2','transition3','level3','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done'];
+const sequence = ['home','setup','reveal','intro','warmup','outside','level1','transition2','level2','transition3','level3','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const fmt = (text, args) => text.replace(/\{(\w+)\}/g, (_,key) => args[key] ?? '');
 const icon = id => C.icons.find(x=>x[0]===id)?.[1] || C.icons[0][1];
@@ -17,6 +18,7 @@ const count = id => C.powers.filter((_,i)=>G.earned(state,id,i)).length;
 const introStormVisuals = new Set(['storm','lost','rescueTeams']);
 const birthdayScreens = new Set(['home','reveal','warmup','award','rescued','rewards','done']);
 const sparkleScreens = new Set(['award','treasure','waiting','found','rescued','rewards','done']);
+const cinematicScreens = new Set(['intro','outside','transition2','transition3','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','award']);
 function button(label, action, attrs='', kind='primary') { return '<button class="'+kind+'" data-action="'+action+'" '+attrs+'>'+esc(label)+'</button>'; }
 function nav(label, screen, kind='primary', disabled=false) { return button(label,'go','data-screen="'+screen+'"'+(disabled?' disabled':''),kind); }
 function mascot(id, extra='') {
@@ -44,6 +46,7 @@ function journeyPowers() {
 function heading(title, text='', eyebrow='') { return '<div class="page-heading">'+(eyebrow?'<p class="eyebrow">'+esc(eyebrow)+'</p>':'')+'<h1>'+esc(title)+'</h1>'+(text?'<p class="lead">'+esc(text).replaceAll('\n','<br>')+'</p>':'')+'</div>'; }
 function note(text) { document.querySelector('#notice').textContent = text; }
 function save() { try { localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); storageError=''; } catch { storageError=U.saveFailed; note(storageError); } }
+function saveMusicVolume(value) { try { localStorage.setItem(MUSIC_VOLUME_KEY,String(value)); } catch {} }
 function photoStatus() {
   const copy=C.memoryPhotos, count=memoryPhotos.length;
   return fmt(count===3?copy.complete:copy.status,{n:count});
@@ -149,6 +152,10 @@ function setupOfflineSupport() {
   });
 }
 try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) state=G.normalize(JSON.parse(saved)); } catch { storageError=U.corruptSave; }
+try {
+  const rawVolume=localStorage.getItem(MUSIC_VOLUME_KEY),savedVolume=Number(rawVolume);
+  if(rawVolume!==null&&Number.isFinite(savedVolume)) M?.setVolume?.(savedVolume);
+} catch {}
 C.teams.forEach(t=>{ if(state.teams[t.id].gesture!==null) warmupPoses[t.id].fill(true); });
 document.title = C.app.title;
 function cancelTimer() { clearTimeout(timer); timer=null; }
@@ -231,7 +238,7 @@ function sceneDecor(flags=sceneFlags(),sunnyReturn=false) {
 }
 function go(screen) {
   if (!G.canVisit(state,screen)) { note(U.locked); return; }
-  if (['reveal','intro','warmup','level1'].includes(screen) && !activeChildren().some(c=>c.name.trim())) { note(U.childRequired); screen='setup'; }
+  if (['reveal','intro','warmup','outside','level1'].includes(screen) && !activeChildren().some(c=>c.name.trim())) { note(U.childRequired); screen='setup'; }
   if (screen==='progress' && state.currentScreen!=='progress') returnScreen=state.currentScreen;
   cancelTimer(); scene=0; rewardShown=false;
   if(screen==='warmup') {
@@ -245,6 +252,7 @@ function go(screen) {
 function chrome(flags=sceneFlags()) {
   document.body.classList.toggle('presentation',presentation);
   document.body.classList.toggle('birthday-mode',state.currentScreen==='done');
+  document.body.classList.toggle('cinematic-mode',cinematicScreens.has(state.currentScreen));
   document.body.classList.toggle('scene-day',!flags.storm);
   document.body.classList.toggle('scene-storm',flags.storm);
   if(state.currentScreen==='done') {
@@ -280,7 +288,7 @@ function warmup() {
   const teamHeader=teamCard(t,'<p class="warmup-counter">'+esc(fmt(U.teamOf,{n:warmupTeam+1}))+' · '+esc(fmt(U.poseProgress,{n:doneCount}))+'</p>','warmup-team-card');
   const poses=t.gestures.map((label,i)=>'<article class="pose-card '+(checks[i]?'pose-complete':'')+'"><div class="pose-image-wrap"><img src="'+esc(t.poseImages[i])+'" alt="'+esc(label)+'" loading="eager">'+(checks[i]?'<span class="pose-check" aria-label="'+esc(U.completed)+'">✓</span>':'')+'</div><h3>'+esc(label)+'</h3>'+button(checks[i]?U.finished:U.finishPose,'poseDone','data-team="'+t.id+'" data-pose="'+i+'" aria-pressed="'+checks[i]+'"'+(checks[i]?' disabled':''),checks[i]?'pose-finish completed':'pose-finish')+'</article>').join('');
   const allDone=C.teams.every(team=>state.teams[team.id].gesture!==null);
-  return '<section class="warmup-session '+t.id+'">'+heading(C.warmup.title,C.warmup.text)+'<div class="warmup-progress" aria-label="'+esc(U.warmupProgress)+'">'+C.teams.map((team,i)=>'<span class="'+(state.teams[team.id].gesture!==null?'done':'')+(i===warmupTeam?' active':'')+'" aria-hidden="true"></span>').join('')+'</div>'+teamHeader+'<div class="pose-grid">'+poses+'</div>'+(teamDone?'<p class="team-spell-done">✓ '+esc(U.teamSpellDone)+'</p>':'')+'<p class="helper">'+esc(U.poseHint)+'</p><div class="actions">'+(warmupTeam>0?button(U.previousTeam,'warmupTeam','data-index="'+(warmupTeam-1)+'"','secondary'):'')+(teamDone&&warmupTeam<2?button(U.nextTeam,'warmupTeam','data-index="'+(warmupTeam+1)+'"'):'')+(allDone?nav(U.next,'level1'):'')+'</div></section>';
+  return '<section class="warmup-session '+t.id+'">'+heading(C.warmup.title,C.warmup.text)+'<div class="warmup-progress" aria-label="'+esc(U.warmupProgress)+'">'+C.teams.map((team,i)=>'<span class="'+(state.teams[team.id].gesture!==null?'done':'')+(i===warmupTeam?' active':'')+'" aria-hidden="true"></span>').join('')+'</div>'+teamHeader+'<div class="pose-grid">'+poses+'</div>'+(teamDone?'<p class="team-spell-done">✓ '+esc(U.teamSpellDone)+'</p>':'')+'<p class="helper">'+esc(U.poseHint)+'</p><div class="actions">'+(warmupTeam>0?button(U.previousTeam,'warmupTeam','data-index="'+(warmupTeam-1)+'"','secondary'):'')+(teamDone&&warmupTeam<2?button(U.nextTeam,'warmupTeam','data-index="'+(warmupTeam+1)+'"'):'')+(allDone?nav(U.next,'outside'):'')+'</div></section>';
 }
 function level(index) {
   const l=C.levels[index];
@@ -304,6 +312,7 @@ function award() {
 }
 
 function visual(type) {
+  if(type==='outsideTeams') return '<div class="outside-adventure" aria-hidden="true"><span class="outside-sun"></span><span class="outside-rainbow">⌒</span><span class="outside-path"></span>'+C.teams.map((t,i)=>mascot(t.id,'outside-team outside-team-'+(i+1))).join('')+'<span class="outside-spark outside-spark-one">✦</span><span class="outside-spark outside-spark-two">✧</span></div>';
   if(type==='finalPowers') return '<div class="final-power-return" aria-hidden="true">'+mascot('unicorn','final-power-unicorn')+'<div class="powers final-return-powers">'+powers(null,true)+'</div><span class="final-return-glow"></span></div>';
   if(type==='finalMagic') return '<div class="final-magic-visual" aria-hidden="true"><span class="final-magic-sparkle sparkle-one">✦</span><span class="final-magic-sparkle sparkle-two">✧</span><span class="final-magic-sparkle sparkle-three">✦</span><span class="final-magic-sparkle sparkle-four">✧</span>'+mascot('unicorn','final-magic-unicorn')+'</div>';
   if(type==='words') return '<div class="destination-parts">'+C.destinationWords.parts.map(w=>'<span>'+esc(w)+'</span>').join('<b>+</b>')+'</div>';
@@ -353,6 +362,7 @@ function advanceScene() {
     render();
   } else {
     if(screen==='intro') state.introCompleted=true;
+    if(screen==='outside') {state.outsideReady=true;save();}
     if(C.storyNext[screen]) go(C.storyNext[screen]);
   }
 }
@@ -368,7 +378,7 @@ function treasure() {
   return '<section class="celebration">'+heading(C.treasure.title,C.treasure.text)+'<div class="scene-visual">'+visual('treasure')+'</div><div class="actions organizer-only">'+button(U.prizesOpened,'prizesOpened')+'</div><p class="helper organizer-only">'+esc(C.treasure.hint)+'</p></section>';
 }
 function waiting() {
-  return heading(C.waiting.title,C.waiting.text)+'<section class="waiting-card">'+powers(null,true)+'<h2>'+esc(C.waiting.readyTitle)+'</h2><p class="lead">'+esc(C.waiting.readyText)+'</p><p>'+esc(C.waiting.hint)+'</p><div class="actions organizer-only">'+nav(U.startFinale,'finale')+'</div></section><div class="actions">'+nav(U.replayDestination,'destination','quiet')+'</div>';
+  return '<section class="waiting-screen">'+heading(C.waiting.title,C.waiting.text)+'<div class="waiting-card">'+powers(null,true)+'<h2>'+esc(C.waiting.readyTitle)+'</h2><p class="lead">'+esc(C.waiting.readyText)+'</p><p>'+esc(C.waiting.hint)+'</p><div class="actions organizer-only">'+nav(U.startFinale,'finale')+'</div></div><div class="actions waiting-replay">'+nav(U.replayDestination,'destination','quiet')+'</div></section>';
 }
 function found() {
   return '<section class="celebration final-search">'+heading(C.found.title)+'<div class="final-search-trail" aria-hidden="true"><span>✦</span><span>·</span><span>✧</span><span>·</span><span>✦</span></div>'+narrationControls()+'<div class="actions organizer-only">'+button(U.confirmFound,'found')+'</div></section>';
@@ -426,7 +436,9 @@ function openOrganizer(reset=false) {
     dialog.innerHTML='<h2>'+esc(U.resetQuestion)+'</h2><p>'+esc(U.resetDetail)+'</p><div class="actions">'+button(U.cancel,'organizer','','secondary')+button(U.confirmReset,'resetConfirm','','danger')+'</div>';
   } else {
     const idx=sequence.indexOf(state.currentScreen==='award'?'level'+(state.award.level+1):state.currentScreen), prev=sequence[Math.max(0,idx-1)], next=sequence[idx+1];
-    dialog.innerHTML='<div class="dialog-heading"><h2>'+esc(U.organizer)+'</h2>'+button(U.close,'close','','secondary')+'</div><fieldset class="story-control"><legend>'+esc(U.storyControl)+'</legend><label><input type="radio" name="story-navigation" value="manual" data-story-mode="manual"'+(storyNavigation==='manual'?' checked':'')+'> '+esc(U.storyManual)+'</label><label><input type="radio" name="story-navigation" value="automatic" data-story-mode="automatic"'+(storyNavigation==='automatic'?' checked':'')+'> '+esc(U.storyAutomatic)+'</label></fieldset><button class="organizer-photo-button" data-action="photos"><span>'+esc(C.memoryPhotos.menu)+'</span><strong>'+esc(photoStatus())+'</strong></button><div class="actions">'+nav(U.back,prev,'secondary')+(next?nav(U.next,next,'secondary',!G.canVisit(state,next)):'')+'</div><h3>'+esc(U.jump)+'</h3><div class="jump-grid">'+['home','reveal','level1','level2','level3','destination','pinata','treasure','returnMessage','waiting','finale','progress'].map(s=>nav(C.screens[s],s,'secondary',!G.canVisit(state,s))).join('')+'</div><div class="actions">'+nav(U.edit,'setup','quiet')+nav(U.replayIntro,'intro','quiet')+nav(U.replayFinale,'finale','quiet',!G.canVisit(state,'finale'))+'</div><h3>'+esc(U.completions)+'</h3><div class="completion-editor">'+C.teams.map(t=>'<fieldset><legend>'+esc(t.name)+'</legend>'+C.powers.map((p,i)=>'<label><input type="checkbox" data-mark-team="'+t.id+'" data-mark-level="'+i+'"'+(state.teams[t.id].completedLevels[i]?' checked':'')+(!G.levelOpen(state,i)&&!state.teams[t.id].completedLevels[i]?' disabled':'')+'>'+p.icon+' '+esc(p.name)+'</label>').join('')+'</fieldset>').join('')+'</div><details><summary>'+esc(U.answers)+'</summary>'+C.teams.map(t=>'<p>'+esc(t.name)+' → <strong>'+esc(t.word)+'</strong></p>').join('')+'</details><hr>'+button(U.reset,'reset','','danger');
+    const volumePercent=Math.round((M?.snapshot?.().normalVolume??.1)*100);
+    const musicVolume='<fieldset class="music-volume-setting"><legend>'+esc(U.musicVolume)+'</legend><label><input type="range" min="0" max="30" step="1" value="'+volumePercent+'" data-music-volume aria-label="'+esc(U.musicVolume)+'"><output data-music-volume-output>'+volumePercent+'%</output></label></fieldset>';
+    dialog.innerHTML='<div class="dialog-heading"><h2>'+esc(U.organizer)+'</h2>'+button(U.close,'close','','secondary')+'</div><fieldset class="story-control"><legend>'+esc(U.storyControl)+'</legend><label><input type="radio" name="story-navigation" value="manual" data-story-mode="manual"'+(storyNavigation==='manual'?' checked':'')+'> '+esc(U.storyManual)+'</label><label><input type="radio" name="story-navigation" value="automatic" data-story-mode="automatic"'+(storyNavigation==='automatic'?' checked':'')+'> '+esc(U.storyAutomatic)+'</label></fieldset>'+musicVolume+'<button class="organizer-photo-button" data-action="photos"><span>'+esc(C.memoryPhotos.menu)+'</span><strong>'+esc(photoStatus())+'</strong></button><div class="actions">'+nav(U.back,prev,'secondary')+(next?nav(U.next,next,'secondary',!G.canVisit(state,next)):'')+'</div><h3>'+esc(U.jump)+'</h3><div class="jump-grid">'+['home','reveal','outside','level1','level2','level3','destination','pinata','treasure','returnMessage','waiting','finale','progress'].map(s=>nav(C.screens[s],s,'secondary',!G.canVisit(state,s))).join('')+'</div><div class="actions">'+nav(U.edit,'setup','quiet')+nav(U.replayIntro,'intro','quiet')+nav(U.replayFinale,'finale','quiet',!G.canVisit(state,'finale'))+'</div><h3>'+esc(U.completions)+'</h3><div class="completion-editor">'+C.teams.map(t=>'<fieldset><legend>'+esc(t.name)+'</legend>'+C.powers.map((p,i)=>'<label><input type="checkbox" data-mark-team="'+t.id+'" data-mark-level="'+i+'"'+(state.teams[t.id].completedLevels[i]?' checked':'')+(!G.levelOpen(state,i)&&!state.teams[t.id].completedLevels[i]?' disabled':'')+'>'+p.icon+' '+esc(p.name)+'</label>').join('')+'</fieldset>').join('')+'</div><details><summary>'+esc(U.answers)+'</summary>'+C.teams.map(t=>'<p>'+esc(t.name)+' → <strong>'+esc(t.word)+'</strong></p>').join('')+'</details><hr>'+button(U.reset,'reset','','danger');
   }
   if(!dialog.open) dialog.showModal();
 }
@@ -438,6 +450,7 @@ function resume() {
   else if(G.allTasksComplete(state)) go('destination');
   else if(!state.introCompleted) go('reveal');
   else if(!C.teams.every(t=>state.teams[t.id].gesture!==null)) go('warmup');
+  else if(!state.outsideReady) go('outside');
   else {
     const next=[0,1,2].find(i=>!G.allComplete(state,i));
     go(next===0?'level1':'transition'+(next+1));
@@ -489,6 +502,12 @@ document.addEventListener('click', event=>{
 });
 document.addEventListener('input',event=>{
   const el=event.target;
+  if(el.dataset.musicVolume!==undefined) {
+    const volume=Math.max(0,Math.min(30,Number(el.value)))/100;
+    M?.setVolume?.(volume);saveMusicVolume(volume);
+    const output=dialog.querySelector?.('[data-music-volume-output]');if(output) output.textContent=Math.round(volume*100)+'%';
+    return;
+  }
   if(el.dataset.field==='name') {state.children[Number(el.dataset.child)].name=el.value; save();}
 });
 document.addEventListener('change',event=>{

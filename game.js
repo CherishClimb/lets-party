@@ -4,13 +4,13 @@
   const teamIds = ['monster', 'octopus', 'crocodile'];
   const iconIds = ['star','moon','rainbow','heart','cloud','sun','diamond','flower','butterfly','lightning','wand','leaf','comet','crown','gem'];
   const maxChildren = 15;
-  const screens = ['home','setup','reveal','intro','warmup','level1','transition2','level2','transition3','level3','award','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done','progress'];
+  const screens = ['home','setup','reveal','intro','warmup','outside','level1','transition2','level2','transition3','level3','award','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done','progress'];
   function fresh() {
     return {
       version:2,
       children:Array.from({length:maxChildren},(_,i)=>({id:'child-'+(i+1),name:'',icon:iconIds[i],teamId:teamIds[i%teamIds.length]})),
       teams:Object.fromEntries(teamIds.map(id=>[id,{gesture:null,completedLevels:[false,false,false]}])),
-      currentScreen:'home',introCompleted:false,clueRevealed:false,treasureFound:false,
+      currentScreen:'home',introCompleted:false,outsideReady:false,clueRevealed:false,treasureFound:false,
       returnInvited:false,rescued:false,birthdayComplete:false,rewardIndex:0,award:null
     };
   }
@@ -50,6 +50,9 @@
       s.teams[id].completedLevels=[0,1,2].map(i=>t?.completedLevels?.[i]===true);
     });
     s.introCompleted=input.introCompleted===true;
+    const beyondOutside=['level1','transition2','level2','transition3','level3','award','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done'].includes(input.currentScreen)
+      || teamIds.some(id=>s.teams[id].completedLevels.some(Boolean));
+    s.outsideReady=input.outsideReady===true||beyondOutside;
     // Preserve already-earned powers and completed old finales when upgrading.
     const legacyHome=input.version===1 && (input.rescued===true || ['waiting','finale','found','rewards','done'].includes(input.currentScreen));
     s.clueRevealed=(input.clueRevealed===true || input.version===1) && allTasksComplete(s);

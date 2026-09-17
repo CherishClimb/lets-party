@@ -195,6 +195,7 @@ window.CONTENT = {
     "reveal": "Unsere Rettungsteams",
     "intro": "Die Geschichte",
     "warmup": "Unser Teamzeichen",
+    "outside": "Auf ins Abenteuer",
     "level1": "Level 1 · Regenbogenweg",
     "level2": "Level 2 · Regenbogenweg",
     "level3": "Level 3 · Buchstabensuche",
@@ -227,6 +228,7 @@ window.CONTENT = {
     "progress": "Unsere Zauberkraft",
     "musicOn": "🎵 Musik an",
     "musicOff": "⏸ Musik aus",
+    "musicVolume": "Musiklautstärke",
     "offlineReady": "Offline bereit ✓",
     "offline": "Offline",
     "magicProgress": "Gefundene Zauberkräfte",
@@ -336,6 +338,15 @@ window.CONTENT = {
     "title": "Jedes Rettungsteam braucht einen Team-Zauber!",
     "text": "Macht gemeinsam alle drei Posen."
   },
+  "outside": [
+    {
+      "visual": "outsideTeams",
+      "title": "Ab nach draußen! 🌈",
+      "text": "Euer Abenteuer wartet!",
+      "button": "Wir sind draußen!",
+      "manual": true
+    }
+  ],
   "intro": [
     {
       "visual": "birthday",
@@ -590,6 +601,7 @@ window.CONTENT = {
   },
   "storyNext": {
     "intro": "warmup",
+    "outside": "level1",
     "transition2": "level2",
     "transition3": "level3",
     "destination": "pinata",

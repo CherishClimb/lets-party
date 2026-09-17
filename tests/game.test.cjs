@@ -7,11 +7,13 @@ const path = require('node:path');
 const G = require('../game.js');
 const root = path.resolve(__dirname,'..');
 
-function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok') {
-  const listeners = {}, timers = new Map(); let tid=0, stored=saved;
+function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok', musicSetting=null) {
+  const listeners = {}, timers = new Map(), storage = new Map(); let tid=0;
+  if(saved!==undefined) storage.set('unicorn-rescue-v1',saved);
+  if(musicSetting!==null) storage.set('unicorn-rescue-music-volume-v1',String(musicSetting));
   const audioInstances=[];
   class FakeAudio {
-    constructor(){this.src='';this.preload='';this.currentTime=0;this.paused=true;this.mode=audioMode;this.playCalls=0;this.pauseCalls=0;this.handlers={};audioInstances.push(this);}
+    constructor(){this.src='';this.preload='';this.currentTime=0;this.volume=1;this.paused=true;this.mode=audioMode;this.playCalls=0;this.pauseCalls=0;this.handlers={};audioInstances.push(this);}
     addEventListener(type,fn){(this.handlers[type]??=[]).push(fn);}
     emit(type){for(const fn of this.handlers[type]||[]) fn();}
     load(){if(!this.src)return;if(this.mode==='missing')this.emit('error');else this.emit('canplay');}
@@ -29,7 +31,7 @@ function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok') 
   dialog.close=()=>{dialog.open=false;dialog.handlers['close']?.();};
   const context = {
     console, window:null, document:{title:'',body:element(),querySelector:s=>elements[s],addEventListener:(type,fn)=>listeners[type]=fn},
-    localStorage:{getItem:()=>stored,setItem:(key,value)=>{if(storageThrows) throw Error('blocked');stored=value;}},
+    localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>{if(storageThrows) throw Error('blocked');storage.set(key,value);}},
     setTimeout:fn=>{timers.set(++tid,fn);return tid;},clearTimeout:id=>timers.delete(id),scrollTo(){},
     URL:{createObjectURL:blob=>'blob:'+blob.id,revokeObjectURL(){}},Audio:FakeAudio
   };
@@ -42,12 +44,14 @@ function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok') 
     context,elements,
     click(action,data={}) {listeners.click({target:{closest:()=>({dataset:{action,...data},disabled:false})}});},
     input(index,name) {listeners.input({target:{dataset:{child:String(index),field:'name'},value:name}});},
+    inputVolume(value) {listeners.input({target:{dataset:{musicVolume:''},value:String(value)}});},
     change(data) {listeners.change({target:data});},
     tick() { const entry=timers.entries().next().value; assert.ok(entry,'expected active animation timer'); timers.delete(entry[0]);entry[1](); },
     timerCount:()=>timers.size,
-    state:()=>JSON.parse(stored),
+    state:()=>JSON.parse(storage.get('unicorn-rescue-v1')),
     html:()=>elements['#app'].innerHTML,
-    serialized:()=>stored,
+    serialized:()=>storage.get('unicorn-rescue-v1'),
+    musicSetting:()=>storage.get('unicorn-rescue-music-volume-v1'),
     audio:()=>audioInstances[0],
     music:()=>audioInstances[1],
     audioCount:()=>audioInstances.length,
@@ -160,7 +164,10 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
     if(teamIndex<2) h.click('warmupTeam',{index:String(teamIndex+1)});
   });
   assert.doesNotMatch(h.html(),/type="file"|capture=/);
-  h.click('go',{screen:'level1'});complete(h,0);
+  assert.match(h.html(),/data-screen="outside"/);h.click('go',{screen:'outside'});
+  assert.match(h.html(),/Ab nach draußen!/);assert.match(h.html(),/Euer Abenteuer wartet!/);assert.match(h.html(),/Wir sind draußen!/);
+  assert.equal(h.timerCount(),0);h.click('sceneNext');assert.equal(h.state().outsideReady,true);assert.equal(h.state().currentScreen,'level1');
+  complete(h,0);
   assert.equal(h.state().currentScreen,'level1');
   h.click('go',{screen:'transition2'});assert.equal(h.timerCount(),0);h.click('sceneNext');assert.match(h.html(),/EINE MATTE WENIGER/);
   h.click('sceneNext');assert.equal(h.state().currentScreen,'level2');complete(h,1);
@@ -353,6 +360,14 @@ test('story navigation defaults to manual and never advances from audio or anima
   assert.equal(transition.timerCount(),0);
   assert.match(transition.html(),/Zaubersturm ist noch nicht vorbei/);
 });
+test('outside transition remains manual and opens the existing first mission',()=>{
+  const s=G.fresh();s.children[0].name='Emma';s.introCompleted=true;s.currentScreen='outside';
+  G.teamIds.forEach(id=>s.teams[id].gesture=0);
+  const h=harness(JSON.stringify(s));h.click('organizer');h.change({dataset:{storyMode:'automatic'},checked:true});h.click('close');
+  assert.match(h.html(),/outside-adventure/);assert.match(h.html(),/Wir sind draußen!/);assert.equal(h.timerCount(),0);
+  h.click('sceneNext');assert.equal(h.state().outsideReady,true);assert.equal(h.state().currentScreen,'level1');
+  h.click('go',{screen:'home'});h.click('resume');assert.equal(h.state().currentScreen,'level1','resume does not repeat the confirmed transition');
+});
 test('automatic story navigation follows safe story scenes and stops at confirmations',()=>{
   const h=harness();fill(h);h.click('go',{screen:'intro'});
   const progress=h.serialized();
@@ -447,18 +462,31 @@ test('three birthday treasure clips follow rewardIndex without changing reward l
   h.click('rewardNext');assert.equal(h.state().currentScreen,'done');
 });
 test('one looping music player follows restored story state and ducks under narration',async()=>{
-  const h=harness();assert.equal(h.context.BackgroundMusic.snapshot().id,'ambient');assert.equal(h.context.BackgroundMusic.snapshot().volume,.13);assert.equal(h.music().loop,true);
-  fill(h);h.click('go',{screen:'intro'});assert.equal(h.context.BackgroundMusic.snapshot().id,'ambient');assert.equal(h.context.BackgroundMusic.snapshot().volume,.08);
-  h.click('narrationToggle');assert.equal(h.context.BackgroundMusic.snapshot().volume,.13);
+  const h=harness();assert.equal(h.context.BackgroundMusic.snapshot().id,'ambient');assert.equal(h.context.BackgroundMusic.snapshot().volume,.10);assert.equal(h.music().loop,true);
+  fill(h);h.click('go',{screen:'intro'});assert.equal(h.context.BackgroundMusic.snapshot().id,'ambient');assert.equal(h.context.BackgroundMusic.snapshot().volume,.06);
+  h.click('narrationToggle');assert.equal(h.context.BackgroundMusic.snapshot().volume,.10);
   h.click('narrationToggle');h.click('sceneNext');h.click('sceneNext');h.click('sceneNext');
   await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');assert.equal(h.context.BackgroundMusic.snapshot().volume,.08);
-  h.click('skip');assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');assert.equal(h.context.BackgroundMusic.snapshot().volume,.13);
+  assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');assert.equal(h.context.BackgroundMusic.snapshot().volume,.06);
+  h.click('skip');assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');assert.equal(h.context.BackgroundMusic.snapshot().volume,.10);
 
   const away=finishState();away.returnInvited=false;away.treasureFound=false;away.currentScreen='pinata';
   assert.equal(harness(JSON.stringify(away)).context.BackgroundMusic.snapshot().id,'storm');
   const returned=finishState();returned.currentScreen='waiting';
   assert.equal(harness(JSON.stringify(returned)).context.BackgroundMusic.snapshot().id,'final');
+});
+test('organizer music slider persists 0 to 30 percent without affecting narration or enabling music',()=>{
+  const h=harness();fill(h);h.click('go',{screen:'intro'});h.click('organizer');
+  assert.match(h.elements['#organizer'].innerHTML,/Musiklautstärke/);assert.match(h.elements['#organizer'].innerHTML,/min="0" max="30"/);assert.match(h.elements['#organizer'].innerHTML,/value="10"/);
+  assert.equal(h.audio().volume,1);h.inputVolume(20);
+  assert.equal(h.context.BackgroundMusic.snapshot().normalVolume,.2);assert.equal(h.context.BackgroundMusic.snapshot().volume,.12);assert.equal(h.audio().volume,1);assert.equal(h.musicSetting(),'0.2');
+  h.click('close');h.click('narrationToggle');h.click('musicToggle');assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);
+  h.inputVolume(30);assert.equal(h.context.BackgroundMusic.snapshot().normalVolume,.3);assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);
+  h.click('sceneNext');h.click('sceneNext');h.click('sceneNext');assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);
+  h.click('musicToggle');assert.equal(h.context.BackgroundMusic.snapshot().volume,.18);
+  h.click('narrationToggle');assert.equal(h.context.BackgroundMusic.snapshot().volume,.3);
+  const reloaded=harness(h.serialized(),false,null,'ok',h.musicSetting());
+  assert.equal(reloaded.context.BackgroundMusic.snapshot().normalVolume,.3);assert.equal(reloaded.audio().volume,1);
 });
 test('music toggle stays off across story phases and remains independent from narration',()=>{
   const h=harness();fill(h);h.click('go',{screen:'intro'});
@@ -570,4 +598,12 @@ test('one, two and three stored photos use their intended final-page collage lay
     assert.equal((h.html().match(/class="memory-photo"/g)||[]).length,count);
     assert.doesNotMatch(h.html(),/Unsere Helden|data-photo-input/);
   }
+});
+
+test('wide landscape story layout keeps visuals and actions in a two-column viewport composition',()=>{
+  const css=fs.readFileSync(path.join(root,'styles.css'),'utf8');
+  assert.match(css,/@media\(min-width:900px\) and \(orientation:landscape\) and \(max-height:1200px\)/);
+  assert.match(css,/body\.cinematic-mode \.story>[.]scene-visual \{ grid-column:1; grid-row:1\/6/);
+  assert.match(css,/body\.cinematic-mode \.story>[.]actions \{ grid-column:2; grid-row:5/);
+  assert.match(css,/@media\(max-width:700px\)/,'phone layout remains separately responsive');
 });
