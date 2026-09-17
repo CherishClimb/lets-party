@@ -130,6 +130,19 @@ function narrationControls() {
   const n=C.narration;
   return '<div class="narration-controls" hidden><span class="narration-label"><i aria-hidden="true">♪</i>'+esc(n.label)+'</span><div class="narration-actions">'+button(n.start,'narrationStart','','secondary narration-start')+button(n.pause,'narrationToggle','','secondary narration-toggle')+button(n.replay,'narrationReplay','','quiet narration-replay')+'</div></div>';
 }
+function musicButton(kind='quiet') {
+  const playing=M?.snapshot?.().status==='playing';
+  return button(playing?U.musicOff:U.musicOn,'musicToggle','aria-pressed="'+playing+'" title="'+esc(playing?U.musicOff:U.musicOn)+'"',kind+' music-toggle');
+}
+function updateMusicUi(snapshot=M?.snapshot?.()) {
+  const control=document.querySelector('#header')?.querySelector?.('[data-action="musicToggle"]');
+  if(!control||!snapshot) return;
+  const playing=snapshot.status==='playing',label=playing?U.musicOff:U.musicOn;
+  control.textContent=label;
+  control.setAttribute('aria-pressed',String(playing));
+  control.setAttribute('title',label);
+  control.classList.toggle('is-playing',playing);
+}
 function updateNarrationUi(snapshot=N?.snapshot?.()) {
   M?.setDucked?.(snapshot?.status==='playing');
   const controls=app.querySelector?.('.narration-controls'),target=currentNarration();
@@ -198,11 +211,11 @@ function chrome(flags=sceneFlags()) {
   document.body.classList.toggle('scene-day',!flags.storm);
   document.body.classList.toggle('scene-storm',flags.storm);
   if(state.currentScreen==='done') {
-    document.querySelector('#header').innerHTML='<div class="final-controls">'+button('⚙','organizer','aria-label="'+esc(U.organizer)+'" title="'+esc(U.organizer)+'"','quiet')+button('⤢','presentation','aria-label="'+esc(presentation?U.exitPresentation:U.presentation)+'" title="'+esc(presentation?U.exitPresentation:U.presentation)+'"','quiet')+'</div>';
+    document.querySelector('#header').innerHTML='<div class="final-controls">'+button('⚙','organizer','aria-label="'+esc(U.organizer)+'" title="'+esc(U.organizer)+'"','quiet')+musicButton()+button('⤢','presentation','aria-label="'+esc(presentation?U.exitPresentation:U.presentation)+'" title="'+esc(presentation?U.exitPresentation:U.presentation)+'"','quiet')+'</div>';
     document.querySelector('#footer').innerHTML='';
     return;
   }
-  document.querySelector('#header').innerHTML='<button class="brand" data-action="go" data-screen="home"><span aria-hidden="true">✦</span>'+esc(C.app.title)+'</button><div class="header-actions">'+(presentation?button(U.exitPresentation,'presentation','','secondary'):button(U.progress,'go','data-screen="progress"','quiet')+button(U.presentation,'presentation','','quiet')+button('⚙ '+U.organizer,'organizer','','secondary'))+'</div>';
+  document.querySelector('#header').innerHTML='<button class="brand" data-action="go" data-screen="home"><span aria-hidden="true">✦</span>'+esc(C.app.title)+'</button><div class="header-actions">'+musicButton()+(presentation?button(U.exitPresentation,'presentation','','secondary'):button(U.progress,'go','data-screen="progress"','quiet')+button(U.presentation,'presentation','','quiet')+button('⚙ '+U.organizer,'organizer','','secondary'))+'</div>';
   document.querySelector('#footer').innerHTML='<span>✧ '+esc(C.app.footer)+'</span><span class="organizer-only">'+esc(storageError || U.saved)+'</span>';
 }
 function roster(t) {
@@ -380,7 +393,7 @@ function resume() {
 document.addEventListener('click', event=>{
   const el=event.target.closest('[data-action]');
   if(!el || el.disabled) return;
-  if(M?.snapshot?.().status==='blocked') void M.play();
+  if(el.dataset.action!=='musicToggle'&&M?.snapshot?.().status==='blocked') void M.play();
   switch(el.dataset.action) {
     case 'go': go(el.dataset.screen); break;
     case 'resume': resume(); break;
@@ -390,6 +403,7 @@ document.addEventListener('click', event=>{
     case 'photoRemove': void removeMemoryPhoto(el.dataset.photoId); break;
     case 'photoRemoveAll': void clearMemoryPhotos(true); break;
     case 'celebrate': replayFinalCelebration(); break;
+    case 'musicToggle': M?.toggle?.(); break;
     case 'narrationStart': void N?.play?.(); void M?.play?.(); break;
     case 'narrationToggle': N?.toggle?.(); break;
     case 'narrationReplay': N?.replay?.(); break;
@@ -444,6 +458,7 @@ document.addEventListener('change',event=>{
 });
 dialog.addEventListener('close',()=>scheduleScene());
 N?.subscribe?.(updateNarrationUi);
+M?.subscribe?.(updateMusicUi);
 render();
 void refreshMemoryPhotos();
 })();

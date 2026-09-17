@@ -353,6 +353,46 @@ test('one looping music player follows restored story state and ducks under narr
   const returned=finishState();returned.currentScreen='waiting';
   assert.equal(harness(JSON.stringify(returned)).context.BackgroundMusic.snapshot().id,'final');
 });
+test('music toggle stays off across story phases and remains independent from narration',()=>{
+  const h=harness();fill(h);h.click('go',{screen:'intro'});
+  assert.match(h.elements['#header'].innerHTML,/data-action="musicToggle"/);
+  assert.match(h.elements['#header'].innerHTML,/Musik aus/);
+  assert.equal(h.context.BackgroundMusic.snapshot().id,'ambient');
+  assert.equal(h.context.BackgroundMusic.snapshot().enabled,true);
+  assert.equal(h.context.StoryNarration.snapshot().status,'playing');
+
+  h.click('musicToggle');
+  assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);
+  assert.equal(h.context.BackgroundMusic.snapshot().status,'paused');
+  assert.equal(h.context.StoryNarration.snapshot().status,'playing');
+  h.click('narrationToggle');
+  assert.equal(h.context.StoryNarration.snapshot().status,'paused');
+  assert.equal(h.context.BackgroundMusic.snapshot().status,'paused');
+  h.click('narrationReplay');
+  assert.equal(h.context.StoryNarration.snapshot().status,'playing');
+  assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);
+
+  h.click('sceneNext');h.click('sceneNext');h.click('sceneNext');
+  assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');
+  assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);
+  assert.equal(h.context.BackgroundMusic.snapshot().status,'paused');
+  assert.match(h.elements['#header'].innerHTML,/Musik an/);
+  h.click('musicToggle');
+  assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');
+  assert.equal(h.context.BackgroundMusic.snapshot().enabled,true);
+  assert.equal(h.context.BackgroundMusic.snapshot().status,'playing');
+  assert.equal(h.context.StoryNarration.snapshot().status,'playing');
+
+  const returned=finishState();returned.currentScreen='waiting';
+  const finale=harness(JSON.stringify(returned));
+  assert.equal(finale.context.BackgroundMusic.snapshot().id,'final');
+  finale.click('musicToggle');finale.click('go',{screen:'finale'});
+  assert.equal(finale.context.BackgroundMusic.snapshot().id,'final');
+  assert.equal(finale.context.BackgroundMusic.snapshot().enabled,false);
+  assert.equal(finale.context.BackgroundMusic.snapshot().status,'paused');
+  finale.click('musicToggle');
+  assert.equal(finale.context.BackgroundMusic.snapshot().status,'playing');
+});
 test('atmosphere follows storm and restored-magic story state',()=>{
   const intro=harness();fill(intro);intro.click('go',{screen:'reveal'});intro.click('go',{screen:'intro'});
   assert.match(intro.html(),/day-decor/);

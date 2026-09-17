@@ -222,6 +222,8 @@ window.CONTENT = {
     "presentation": "Präsentationsmodus",
     "exitPresentation": "Präsentationsmodus verlassen",
     "progress": "Unsere Zauberkraft",
+    "musicOn": "🎵 Musik an",
+    "musicOff": "⏸ Musik aus",
     "magicProgress": "Gefundene Zauberkräfte",
     "setup": "Kinder & Teams vorbereiten",
     "startSetup": "ABENTEUER STARTEN",
