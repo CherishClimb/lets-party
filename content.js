@@ -242,7 +242,7 @@ window.CONTENT = {
     "waitTeams": "Weiter, sobald alle drei Teams fertig sind.",
     "unlock": "FINALE FREISCHALTEN",
     "startFinale": "Finale starten",
-    "confirmFound": "EINHORN GEFUNDEN!",
+    "confirmFound": "Ihr habt mich gefunden!",
     "nextReward": "Nächster Geburtstagsschatz",
     "finish": "Zum Geburtstagsbild",
     "reset": "Spiel zurücksetzen",
@@ -373,8 +373,14 @@ window.CONTENT = {
     ],
     "finale": [
       "Assets/Audio/story/final-01.mp3",
-      "Assets/Audio/story/final-02.mp3",
-      "Assets/Audio/story/final-03.mp3"
+      "Assets/Audio/story/final-02.mp3"
+    ],
+    "found": "Assets/Audio/story/final-03.mp3",
+    "rescued": "Assets/Audio/story/final-04.mp3",
+    "rewards": [
+      "Assets/Audio/story/treasure-01.mp3",
+      "Assets/Audio/story/treasure-02.mp3",
+      "Assets/Audio/story/treasure-03.mp3"
     ]
   },
   "backgroundMusic": {
@@ -468,51 +474,18 @@ window.CONTENT = {
   },
   "finale": [
     {
-      "visual": "forestEmpty",
-      "title": "Wir sind wieder im Zauberwald.",
-      "text": "Aber wo ist das Geburtstags-Einhorn?",
-      "duration": 4500
-    },
-    {
       "visual": "magicTogether",
-      "text": "Gebt dem Einhorn seine Magie zurück!",
-      "duration": 4500
+      "title": "Ihr habt es geschafft!",
+      "text": "Ihr habt alle drei Zauberkräfte gefunden.\n\nJetzt bringt sie zurück zum Einhorn.\n\nMut.\nZusammenhalt.\nKlugheit.\n\nAlle drei Kräfte sind wieder da."
     },
     {
       "visual": "happy",
-      "title": "IHR HABT ES GESCHAFFT!",
-      "text": "",
-      "duration": 3000
-    },
-    {
-      "visual": "restoredPowers",
-      "text": "",
-      "duration": 6500
-    },
-    {
-      "visual": "birthday",
-      "text": "Jetzt kann der sechste Geburtstag doch noch weitergehen!",
-      "duration": 4500
-    },
-    {
-      "visual": "thanks",
-      "text": "Danke, kleine Monster!\nDanke, kleine Oktopusse!\nDanke, kleine Krokodile!",
-      "duration": 5500
-    },
-    {
-      "visual": "pause",
-      "text": "Aber wartet …",
-      "duration": 1800
-    },
-    {
-      "visual": "clue",
-      "text": "Ich bin ganz in eurer Nähe.",
-      "duration": 3500
+      "text": "Mein Mut ist zurück.\nMein Zusammenhalt ist zurück.\nUnd meine Klugheit ist zurück.\n\nDanke!\nIhr habt das gemeinsam geschafft.\n\nJetzt kann meine Magie wieder leuchten."
     }
   ],
   "found": {
-    "title": "FINDET MICH!",
-    "text": "Ich bin ganz in eurer Nähe.",
+    "title": "Aber … wo ist das Einhorn?",
+    "text": "Hört gut zu.\n\n„Ich bin ganz in eurer Nähe …“\n\nKönnt ihr mich finden?",
     "hint": "Erst bestätigen, wenn die Kinder den echten Einhorn-Ballon entdeckt haben."
   },
   "done": {
@@ -608,8 +581,8 @@ window.CONTENT = {
     "Und meine Klugheit ist zurück."
   ],
   "rescued": {
-    "title": "DAS GEBURTSTAGS-EINHORN IST GERETTET!",
-    "text": "Jetzt kann die Geburtstagsfeier endlich richtig weitergehen!"
+    "title": "Ihr habt mich gefunden!",
+    "text": "Das Geburtstagseinhorn ist gerettet.\nUnd der Zauberwald ist wieder voller Magie.\n\nJetzt kann die Geburtstagsfeier endlich richtig weitergehen!"
   },
   "storyNext": {
     "intro": "warmup",

@@ -144,11 +144,11 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   assert.match(h.html(),/Alle drei Zauberkräfte sind sicher/);assert.equal(h.timerCount(),0);
   assert.doesNotMatch(h.html(),/mascot unicorn|Zaubertrank|Zauberschokolade|Marshmallow/);
   h.click('go',{screen:'finale'});
-  for(let i=0;i<h.context.CONTENT.finale.length;i++) i<3?h.click('sceneNext'):h.tick();
-  assert.equal(h.state().currentScreen,'found');assert.match(h.html(),/FINDET MICH!/);
+  for(let i=0;i<h.context.CONTENT.finale.length;i++) h.click('sceneNext');
+  assert.equal(h.state().currentScreen,'found');assert.match(h.html(),/Aber … wo ist das Einhorn/);assert.match(h.html(),/Ihr habt mich gefunden!/);
   assert.doesNotMatch(h.html(),/Zaubertrank|Zauberschokolade|Marshmallow/);
   h.click('found');assert.equal(h.state().currentScreen,'rescued');
-  assert.match(h.html(),/DAS GEBURTSTAGS-EINHORN IST GERETTET/);
+  assert.match(h.html(),/Das Geburtstagseinhorn ist gerettet/);assert.match(h.html(),/Geheime Team-Belohnungen zeigen/);
   h.click('go',{screen:'rewards'});assert.match(h.html(),/Zaubertrank gefunden!/);h.tick();
   h.click('rewardNext');assert.match(h.html(),/Schoko-Schatz gefunden!/);h.tick();
   h.click('rewardNext');assert.match(h.html(),/Wolkenkuss gefunden!/);assert.match(h.html(),/Alle drei Geburtstagsschätze sind zurück!/);assert.match(h.html(),/Jetzt wird gefeiert! 🎉/);h.tick();
@@ -276,8 +276,12 @@ test('story narration and background music have central mappings',()=>{
   const h=harness(),c=h.context.CONTENT;
   assert.equal(c.intro.length,6);assert.equal(c.storyAudio.intro.length,6);
   c.storyAudio.intro.forEach((src,i)=>assert.equal(src,'Assets/Audio/story/scene-'+String(i+1).padStart(2,'0')+'.mp3'));
-  assert.deepEqual(Array.from(c.storyAudio.finale),['Assets/Audio/story/final-01.mp3','Assets/Audio/story/final-02.mp3','Assets/Audio/story/final-03.mp3']);
+  assert.deepEqual(Array.from(c.storyAudio.finale),['Assets/Audio/story/final-01.mp3','Assets/Audio/story/final-02.mp3']);
+  assert.equal(c.storyAudio.found,'Assets/Audio/story/final-03.mp3');assert.equal(c.storyAudio.rescued,'Assets/Audio/story/final-04.mp3');
+  assert.deepEqual(Array.from(c.storyAudio.rewards),['Assets/Audio/story/treasure-01.mp3','Assets/Audio/story/treasure-02.mp3','Assets/Audio/story/treasure-03.mp3']);
   assert.deepEqual({...c.backgroundMusic},{ambient:'Assets/Audio/story/ambient.mp3',storm:'Assets/Audio/story/storm.mp3',final:'Assets/Audio/story/final.mp3'});
+  assert.equal(c.finale.length,2);assert.equal(c.finale[0].title,'Ihr habt es geschafft!');assert.match(c.finale[0].text,/Mut\.\nZusammenhalt\.\nKlugheit\./);
+  assert.match(c.finale[1].text,/Jetzt kann meine Magie wieder leuchten\./);assert.equal(c.found.title,'Aber … wo ist das Einhorn?');assert.equal(c.rescued.title,'Ihr habt mich gefunden!');
   for(const [from,to] of Object.entries(c.storyNext)) {
     assert.ok(Array.isArray(c[from]),from);assert.ok(c.screens[to],to);
   }
@@ -310,15 +314,25 @@ test('missing narration stays hidden and never blocks story navigation',async()=
   assert.equal(h.context.StoryNarration.snapshot().status,'missing');assert.match(h.html(),/narration-controls" hidden/);
   h.click('sceneNext');assert.equal(h.context.StoryNarration.snapshot().id,'intro:2');assert.equal(h.state().currentScreen,'intro');
 });
-test('three finale narration clips use the existing finale scene IDs and never auto-advance',()=>{
+test('four final narration clips use finale, found and rescued states without changing buttons',()=>{
   const s=finishState();s.currentScreen='waiting';const h=harness(JSON.stringify(s));
   h.click('go',{screen:'finale'});
   assert.equal(h.context.StoryNarration.snapshot().id,'finale:1');assert.match(h.audio().src,/final-01\.mp3$/);assert.equal(h.timerCount(),0);
   h.audio().emit('ended');assert.equal(h.context.StoryNarration.snapshot().id,'finale:1');assert.equal(h.timerCount(),0);
   h.click('sceneNext');assert.equal(h.context.StoryNarration.snapshot().id,'finale:2');assert.match(h.audio().src,/final-02\.mp3$/);assert.equal(h.timerCount(),0);
-  h.click('sceneNext');assert.equal(h.context.StoryNarration.snapshot().id,'finale:3');assert.match(h.audio().src,/final-03\.mp3$/);assert.equal(h.timerCount(),0);
-  h.audio().emit('ended');assert.equal(h.context.StoryNarration.snapshot().id,'finale:3');assert.equal(h.timerCount(),0);
-  h.click('sceneNext');assert.equal(h.context.StoryNarration.snapshot().status,'idle');assert.equal(h.timerCount(),1);
+  h.click('sceneNext');assert.equal(h.state().currentScreen,'found');assert.equal(h.context.StoryNarration.snapshot().id,'found');assert.match(h.audio().src,/final-03\.mp3$/);assert.equal(h.timerCount(),0);
+  h.audio().emit('ended');assert.equal(h.state().currentScreen,'found');assert.match(h.html(),/Ihr habt mich gefunden!/);
+  h.click('found');assert.equal(h.state().currentScreen,'rescued');assert.equal(h.context.StoryNarration.snapshot().id,'rescued');assert.match(h.audio().src,/final-04\.mp3$/);assert.equal(h.timerCount(),0);
+  h.audio().emit('ended');assert.equal(h.state().currentScreen,'rescued');assert.match(h.html(),/Geheime Team-Belohnungen zeigen/);
+});
+test('three birthday treasure clips follow rewardIndex without changing reward logic',()=>{
+  const s=finishState();s.rescued=true;s.currentScreen='rewards';const h=harness(JSON.stringify(s));
+  assert.equal(h.context.StoryNarration.snapshot().id,'rewards:1');assert.match(h.audio().src,/treasure-01\.mp3$/);assert.match(h.html(),/Zaubertrank gefunden!/);
+  h.tick();h.audio().emit('ended');assert.equal(h.state().rewardIndex,0);
+  h.click('rewardNext');assert.equal(h.state().rewardIndex,1);assert.equal(h.context.StoryNarration.snapshot().id,'rewards:2');assert.match(h.audio().src,/treasure-02\.mp3$/);assert.match(h.html(),/Schoko-Schatz gefunden!/);
+  h.tick();h.click('rewardNext');assert.equal(h.state().rewardIndex,2);assert.equal(h.context.StoryNarration.snapshot().id,'rewards:3');assert.match(h.audio().src,/treasure-03\.mp3$/);assert.match(h.html(),/Wolkenkuss gefunden!/);
+  h.tick();h.audio().emit('ended');assert.equal(h.state().currentScreen,'rewards');
+  h.click('rewardNext');assert.equal(h.state().currentScreen,'done');
 });
 test('one looping music player follows restored story state and ducks under narration',async()=>{
   const h=harness();assert.equal(h.context.BackgroundMusic.snapshot().id,'ambient');assert.equal(h.context.BackgroundMusic.snapshot().volume,.13);assert.equal(h.music().loop,true);

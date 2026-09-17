@@ -40,7 +40,7 @@ function journeyPowers() {
     return '<span class="'+(restored?'restored':'waiting')+'"><b aria-hidden="true">'+p.icon+'</b>'+esc(p.name)+'</span>';
   }).join('')+'</div>';
 }
-function heading(title, text='', eyebrow='') { return '<div class="page-heading">'+(eyebrow?'<p class="eyebrow">'+esc(eyebrow)+'</p>':'')+'<h1>'+esc(title)+'</h1>'+(text?'<p class="lead">'+esc(text)+'</p>':'')+'</div>'; }
+function heading(title, text='', eyebrow='') { return '<div class="page-heading">'+(eyebrow?'<p class="eyebrow">'+esc(eyebrow)+'</p>':'')+'<h1>'+esc(title)+'</h1>'+(text?'<p class="lead">'+esc(text).replaceAll('\n','<br>')+'</p>':'')+'</div>'; }
 function note(text) { document.querySelector('#notice').textContent = text; }
 function save() { try { localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); storageError=''; } catch { storageError=U.saveFailed; note(storageError); } }
 function photoStatus() {
@@ -119,8 +119,12 @@ C.teams.forEach(t=>{ if(state.teams[t.id].gesture!==null) warmupPoses[t.id].fill
 document.title = C.app.title;
 function cancelTimer() { clearTimeout(timer); timer=null; }
 function currentNarration() {
-  const screen=state.currentScreen,src=C.storyAudio?.[screen]?.[scene];
-  return src?{id:screen+':'+(scene+1),src}:null;
+  const screen=state.currentScreen,mapping=C.storyAudio?.[screen];
+  if(!mapping) return null;
+  const index=screen==='rewards'?state.rewardIndex:scene;
+  const src=Array.isArray(mapping)?mapping[index]:mapping;
+  if(!src) return null;
+  return {id:Array.isArray(mapping)?screen+':'+(index+1):screen,src};
 }
 function narrationControls() {
   const n=C.narration;
@@ -287,7 +291,7 @@ function advanceScene() {
 function story(screen) {
   const scenes=C[screen],item=scenes[scene],last=scene===scenes.length-1;
   const nextLabel=item.button||(screen==='intro'&&last?U.startAdventure:screen==='destination'&&last?U.toCourtyard:screen==='returnMessage'&&last?U.returnHome:U.next);
-  return '<section class="story '+item.visual+'">'+heading(C.screens[screen],'',fmt(U.stepCounter,{n:scene+1,total:scenes.length}))+'<div class="scene-visual">'+visual(item.visual)+'</div>'+(item.title?'<h2 class="scene-title">'+esc(item.title)+'</h2>':'')+(item.text?'<p class="story-text">'+esc(item.text).replaceAll('\n','<br>')+'</p>':'')+(C.storyAudio?.[screen]?.[scene]?narrationControls():'')+'<div class="scene-dots" aria-hidden="true">'+scenes.map((_,i)=>'<i class="'+(i===scene?'active':'')+'"></i>').join('')+'</div><div class="actions">'+(scene?button(U.back,'sceneBack','','secondary'):'')+button(nextLabel,'sceneNext')+(screen==='intro'?button(U.skip,'skip','','quiet'):'')+'</div></section>';
+  return '<section class="story '+item.visual+'">'+heading(C.screens[screen],'',fmt(U.stepCounter,{n:scene+1,total:scenes.length}))+'<div class="scene-visual">'+visual(item.visual)+'</div>'+(item.title?'<h2 class="scene-title">'+esc(item.title)+'</h2>':'')+(item.text?'<p class="story-text">'+esc(item.text).replaceAll('\n','<br>')+'</p>':'')+(currentNarration()?narrationControls():'')+'<div class="scene-dots" aria-hidden="true">'+scenes.map((_,i)=>'<i class="'+(i===scene?'active':'')+'"></i>').join('')+'</div><div class="actions">'+(scene?button(U.back,'sceneBack','','secondary'):'')+button(nextLabel,'sceneNext')+(screen==='intro'?button(U.skip,'skip','','quiet'):'')+'</div></section>';
 }
 function pinata() {
   return '<section class="story">'+heading(C.pinata.title,C.pinata.text)+'<div class="scene-visual">'+visual('treasure')+'</div><div class="actions organizer-only">'+button(U.treasureFound,'treasureFound')+'</div></section>';
@@ -299,14 +303,14 @@ function waiting() {
   return heading(C.waiting.title,C.waiting.text)+'<section class="waiting-card">'+powers(null,true)+'<h2>'+esc(C.waiting.readyTitle)+'</h2><p class="lead">'+esc(C.waiting.readyText)+'</p><p>'+esc(C.waiting.hint)+'</p><div class="actions organizer-only">'+nav(U.startFinale,'finale')+'</div></section><div class="actions">'+nav(U.replayDestination,'destination','quiet')+'</div>';
 }
 function found() {
-  return '<section class="celebration">'+heading(C.found.title,C.found.text)+mascot('unicorn')+'<div class="actions organizer-only">'+button(U.confirmFound,'found')+'</div><p class="helper organizer-only">'+esc(C.found.hint)+'</p></section>';
+  return '<section class="celebration">'+heading(C.found.title,C.found.text)+mascot('unicorn')+narrationControls()+'<div class="actions organizer-only">'+button(U.confirmFound,'found')+'</div><p class="helper organizer-only">'+esc(C.found.hint)+'</p></section>';
 }
 function rewards() {
   const t=C.teams[state.rewardIndex];
-  return '<section class="reward-screen '+t.id+'">'+heading(t.reward.unlock,'',fmt(U.rewardCounter,{n:state.rewardIndex+1}))+mascot(t.id)+'<div class="reward '+(rewardShown?'revealed':'')+'"><div class="reward-icon" aria-hidden="true">'+t.reward.icon+'</div><h2>'+esc(t.reward.name)+'</h2><p class="lead">'+esc(t.reward.text)+'</p></div><div class="actions">'+button(state.rewardIndex<2?U.nextReward:U.finish,'rewardNext')+'</div></section>';
+  return '<section class="reward-screen '+t.id+'">'+heading(t.reward.unlock,'',fmt(U.rewardCounter,{n:state.rewardIndex+1}))+mascot(t.id)+'<div class="reward '+(rewardShown?'revealed':'')+'"><div class="reward-icon" aria-hidden="true">'+t.reward.icon+'</div><h2>'+esc(t.reward.name)+'</h2><p class="lead">'+esc(t.reward.text)+'</p></div>'+narrationControls()+'<div class="actions">'+button(state.rewardIndex<2?U.nextReward:U.finish,'rewardNext')+'</div></section>';
 }
 function rescued() {
-  return '<section class="celebration">'+heading(C.rescued.title,C.rescued.text)+mascot('unicorn')+'<div class="actions">'+nav(U.revealRewards,'rewards')+'</div></section>';
+  return '<section class="celebration">'+heading(C.rescued.title,C.rescued.text)+mascot('unicorn')+narrationControls()+'<div class="actions">'+nav(U.revealRewards,'rewards')+'</div></section>';
 }
 function done() {
   const photoCount=memoryPhotos.length;
