@@ -59,15 +59,15 @@ function fill(h) { h.click('go',{screen:'setup'}); h.input(0,'Emma');h.input(4,'
 function complete(h,n) { for(const id of G.teamIds) { h.click('mark',{team:id,level:String(n)}); if(n<2) { assert.match(h.html(),/gefunden!/); h.click('go',{screen:'level'+(n+1)}); } } }
 function finishState() {const s=G.fresh();s.children[0].name='Emma';for(let i=0;i<3;i++) for(const id of G.teamIds) G.mark(s,id,i,true);G.revealClue(s);s.treasureFound=true;s.returnInvited=true;return s;}
 
-test('12 active slots default to four places per team with room to expand to 15',()=>{
-  const s=G.fresh();assert.equal(s.participantCount,12);assert.equal(s.children.length,15);
-  for(const id of G.teamIds) assert.equal(s.children.slice(0,s.participantCount).filter(c=>c.teamId===id).length,4);
+test('15 preparation slots provide five empty places per team',()=>{
+  const s=G.fresh();assert.equal(s.children.length,15);
+  for(const id of G.teamIds) assert.equal(s.children.filter(c=>c.teamId===id).length,5);
   assert.ok(s.children.every(c=>!c.name));
 });
 test('6 to 15 children distribute evenly and calculate team mats for both rounds',()=>{
   const expected={12:[4,4,4],13:[5,4,4],14:[5,5,4],15:[5,5,5]};
   for(let total=6;total<=15;total++) {
-    const s=G.fresh(total);
+    const s=G.fresh();
     s.children.slice(0,total).forEach((child,i)=>child.name='Kind '+(i+1));
     const sizes=G.teamIds.map(id=>G.teamSize(s,id));
     assert.equal(sizes.reduce((sum,n)=>sum+n,0),total);
@@ -114,30 +114,29 @@ test('stored data is normalized and invalid screens cannot bypass gates',()=>{
   assert.throws(()=>G.normalize({}));
 });
 test('existing 12-child saves gain the extra slots without losing setup data',()=>{
-  const previous=G.fresh();delete previous.participantCount;previous.children=previous.children.slice(0,12);
+  const previous=G.fresh();previous.children=previous.children.slice(0,12);
   previous.children[0].name='Emma';previous.children[0].icon='moon';previous.children[0].teamId='crocodile';
   const migrated=G.normalize(previous);
-  assert.equal(migrated.participantCount,12);assert.equal(migrated.children.length,15);
+  assert.equal(migrated.children.length,15);
   assert.deepEqual(migrated.children[0],{id:'child-1',name:'Emma',icon:'moon',teamId:'crocodile'});
   assert.deepEqual(migrated.children.slice(12).map(child=>child.teamId),['monster','octopus','crocodile']);
 });
-test('home and setup keep the storybook team layout with 12 slots visible by default',()=>{
+test('home and setup keep the storybook team layout with all 15 slots visible',()=>{
   const h=harness();
   assert.match(h.html(),/LUCYS 6\. GEBURTSTAG/);
   assert.match(h.html(),/Ein magisches Abenteuer beginnt/);
   assert.doesNotMatch(h.html(),/3 Rettungsteams|3 Abenteuer|1 Einhorn/);
   h.click('go',{screen:'setup'});
   assert.equal((h.html().match(/class="setup-team /g)||[]).length,3);
-  assert.equal((h.html().match(/data-field="name"/g)||[]).length,12);
+  assert.equal((h.html().match(/data-field="name"/g)||[]).length,15);
   assert.match(h.html(),/Die kleinen Monster/);assert.match(h.html(),/Die kleinen Oktopusse/);assert.match(h.html(),/Die kleinen Krokodile/);
 });
 test('13 children work from team preparation through both dynamic mat rounds',()=>{
   const h=harness();h.click('go',{screen:'setup'});
-  h.change({dataset:{childCount:''},value:'13'});
-  assert.equal((h.html().match(/data-field="name"/g)||[]).length,13);
+  assert.equal((h.html().match(/data-field="name"/g)||[]).length,15);
   for(let i=0;i<13;i++) h.input(i,'Kind '+(i+1));
-  const prepared=h.state(),active=prepared.children.slice(0,prepared.participantCount);
-  assert.equal(prepared.participantCount,13);assert.equal(new Set(active.map(child=>child.id)).size,13);
+  const prepared=h.state(),active=prepared.children.filter(child=>child.name);
+  assert.equal(active.length,13);assert.equal(new Set(active.map(child=>child.id)).size,13);
   assert.deepEqual(G.teamIds.map(id=>G.teamSize(prepared,id)),[5,4,4]);
   h.click('go',{screen:'reveal'});assert.match(h.html(),/Kind 13/);
   h.click('go',{screen:'level1'});
@@ -267,7 +266,7 @@ test('moving a child and choosing an icon persist independently of team completi
   const loaded=harness(h.serialized());
   assert.equal(loaded.state().children[0].teamId,'octopus');
   assert.equal(loaded.state().children[0].icon,'moon');
-  assert.equal(loaded.state().children.length,15);assert.equal(loaded.state().participantCount,12);
+  assert.equal(loaded.state().children.length,15);
 });
 test('warm-up shows one team with three fixed pose cards and keeps the saved-state shape',()=>{
   const h=harness();fill(h);h.click('go',{screen:'warmup'});

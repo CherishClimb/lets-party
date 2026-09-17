@@ -11,7 +11,7 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;'
 const fmt = (text, args) => text.replace(/\{(\w+)\}/g, (_,key) => args[key] ?? '');
 const icon = id => C.icons.find(x=>x[0]===id)?.[1] || C.icons[0][1];
 const team = id => C.teams.find(t=>t.id===id);
-const activeChildren = () => state.children.slice(0,state.participantCount);
+const activeChildren = () => state.children;
 const children = id => activeChildren().filter(c=>c.teamId===id && c.name.trim());
 const count = id => C.powers.filter((_,i)=>G.earned(state,id,i)).length;
 const introStormVisuals = new Set(['storm','lost','rescueTeams']);
@@ -269,9 +269,8 @@ function home() {
 }
 function setup() {
   const childSlot=(c,i)=>'<article class="child-slot '+c.teamId+'"><div class="slot-heading"><span>'+esc(fmt(U.slot,{n:i+1}))+'</span><span aria-hidden="true">'+icon(c.icon)+'</span></div><label>'+esc(U.name)+'<input data-child="'+i+'" data-field="name" value="'+esc(c.name)+'" placeholder="'+esc(U.empty)+'" maxlength="40" autocomplete="off"></label><div class="field-pair"><label>'+esc(U.icon)+'<select data-child="'+i+'" data-field="icon">'+C.icons.map(x=>'<option value="'+x[0]+'"'+(x[0]===c.icon?' selected':'')+'>'+x[1]+' '+esc(x[2])+'</option>').join('')+'</select></label><label>'+esc(U.team)+'<select data-child="'+i+'" data-field="teamId">'+C.teams.map(t=>'<option value="'+t.id+'"'+(t.id===c.teamId?' selected':'')+'>'+esc(t.short)+'</option>').join('')+'</select></label></div></article>';
-  const countSelect='<label class="setup-count">'+esc(C.setup.countLabel)+'<select data-child-count>'+Array.from({length:G.maxChildren-G.minChildren+1},(_,i)=>G.minChildren+i).map(n=>'<option value="'+n+'"'+(n===state.participantCount?' selected':'')+'>'+n+'</option>').join('')+'</select></label>';
   const groups=C.teams.map(t=>'<section class="setup-team '+t.id+'"><div class="setup-team-heading">'+mascot(t.id)+'<div><p class="eyebrow">'+esc(U.rescueTeam)+'</p><h2>'+esc(t.name)+'</h2></div></div><div class="setup-team-slots">'+activeChildren().map((c,i)=>c.teamId===t.id?childSlot(c,i):'').join('')+'</div></section>').join('');
-  return '<section class="setup-page">'+heading(C.setup.title,C.setup.text)+countSelect+'<p class="helper">'+esc(C.setup.help)+'</p><div class="setup-teams">'+groups+'</div><div class="actions">'+nav(U.begin,'reveal')+'</div></section>';
+  return '<section class="setup-page">'+heading(C.setup.title,C.setup.text)+'<p class="helper">'+esc(C.setup.help)+'</p><div class="setup-teams">'+groups+'</div><div class="actions">'+nav(U.begin,'reveal')+'</div></section>';
 }
 function reveal() {
   return heading(C.reveal.title,C.reveal.text)+'<div class="team-grid reveal">'+C.teams.map(t=>teamCard(t,roster(t))).join('')+'</div><div class="actions">'+nav(U.next,'intro')+'</div>';
@@ -495,7 +494,6 @@ document.addEventListener('input',event=>{
 document.addEventListener('change',event=>{
   const el=event.target;
   if(el.dataset.storyMode&&el.checked) {storyNavigation=el.dataset.storyMode==='automatic'?'automatic':'manual';cancelTimer();return;}
-  if(el.dataset.childCount!==undefined) {state.participantCount=Math.max(G.minChildren,Math.min(G.maxChildren,Number(el.value)));save();render();return;}
   if(el.dataset.photoInput!==undefined) {void processPhotoFiles(el.files);el.value='';return;}
   if(el.dataset.photoReplace!==undefined) {void processPhotoFiles(el.files,el.dataset.photoReplace);el.value='';return;}
   if(el.dataset.child!==undefined) {

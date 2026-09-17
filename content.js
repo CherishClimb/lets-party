@@ -325,9 +325,8 @@ window.CONTENT = {
   },
   "setup": {
     "title": "Wer rettet das Einhorn?",
-    "text": "Bis zu 15 Kinder, drei Rettungsteams. Leere Plätze sind völlig okay.",
-    "countLabel": "Wie viele Kinder sind dabei?",
-    "help": "Die Plätze werden möglichst gleichmäßig verteilt. Du kannst jedes Kind einem anderen Team zuordnen."
+    "text": "15 Plätze, drei Rettungsteams. Leere Plätze sind völlig okay.",
+    "help": "Fünf Plätze pro Team sind vorbereitet. Du kannst jedes Kind einem anderen Team zuordnen."
   },
   "reveal": {
     "title": "Das sind unsere Rettungsteams!",
