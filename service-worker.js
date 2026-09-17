@@ -2,7 +2,7 @@
 'use strict';
 
 const APP_CACHE_PREFIX = 'lets-party-';
-const CACHE_NAME = 'lets-party-v10';
+const CACHE_NAME = 'lets-party-v11';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -14,6 +14,7 @@ const PRECACHE_URLS = [
   './photo-store.js',
   './styles.css',
   './Assets/Audio/story/ambient.mp3',
+  './Assets/Audio/story/einhorn-party-song.mp3',
   './Assets/Audio/story/final.mp3',
   './Assets/Audio/story/final-01.mp3',
   './Assets/Audio/story/final-02.mp3',

@@ -119,6 +119,11 @@
         this.status='paused';
         this.emit();
       });
+      this.audio.addEventListener('ended',()=>{
+        if(!this.current.id) return;
+        this.status='ended';
+        this.emit();
+      });
       this.audio.addEventListener('canplay',()=>{
         if(!this.current.id||this.status!=='loading') return;
         this.status='paused';
@@ -159,13 +164,14 @@
       };
       raf(frame);
     }
-    open(id,src) {
+    open(id,src,options={}) {
       if(!this.audio||!id||!src) return;
-      if((this.current.id===id&&this.current.src===src)||(this.pending?.id===id&&this.pending?.src===src)) {
+      const loop=options.loop!==false;
+      if((this.current.id===id&&this.current.src===src&&this.current.loop===loop)||(this.pending?.id===id&&this.pending?.src===src&&this.pending?.loop===loop)) {
         if(this.enabled&&this.status==='blocked') void this.play();
         return;
       }
-      this.pending={id,src};
+      this.pending={id,src,loop};
       if(this.current.id&&this.status==='playing') this.fadeTo(0,350,()=>this.activatePending(true));
       else {this.fadeToken++;this.activatePending(false);}
     }
@@ -180,7 +186,7 @@
       this.status='loading';
       this.audio.src=target.src;
       this.audio.preload='auto';
-      this.audio.loop=true;
+      this.audio.loop=target.loop;
       this.audio.volume=fadeIn?0:this.targetVolume();
       this.audio.load();
       this.changing=false;
@@ -190,6 +196,7 @@
     async play(fadeIn=false) {
       if(!this.enabled||!this.audio||!this.current.id||this.status==='missing') return false;
       const requestId=this.current.id;
+      if(this.status==='ended') this.audio.currentTime=0;
       try {
         const result=this.audio.play();
         if(result&&typeof result.then==='function') await result;

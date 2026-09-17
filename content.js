@@ -398,6 +398,7 @@ window.CONTENT = {
     "storm": "Assets/Audio/story/storm.mp3",
     "final": "Assets/Audio/story/final.mp3"
   },
+  "celebrationMusic": "Assets/Audio/story/einhorn-party-song.mp3",
   "narration": {
     "label": "🔊 Geschichte",
     "start": "🔊 Geschichte starten",

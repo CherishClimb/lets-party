@@ -210,8 +210,12 @@ function syncNarration() {
   updateNarrationUi();
 }
 function syncBackgroundMusic(flags=sceneFlags()) {
+  if(state.currentScreen==='done'&&C.celebrationMusic) {
+    M?.open?.('celebration',C.celebrationMusic,{loop:false});
+    return;
+  }
   const id=flags.restored?'final':flags.musicStorm?'storm':'ambient',src=C.backgroundMusic?.[id];
-  if(src) M?.open?.(id,src);
+  if(src) M?.open?.(id,src,{loop:true});
 }
 function activeVisual() {
   const scenes=C[state.currentScreen];

@@ -340,6 +340,7 @@ test('story narration and background music have central mappings',()=>{
   assert.equal(c.storyAudio.found,'Assets/Audio/story/final-03.mp3');assert.equal(c.storyAudio.rescued,'Assets/Audio/story/final-04.mp3');
   assert.deepEqual(Array.from(c.storyAudio.rewards),['Assets/Audio/story/treasure-01.mp3','Assets/Audio/story/treasure-02.mp3','Assets/Audio/story/treasure-03.mp3']);
   assert.deepEqual({...c.backgroundMusic},{ambient:'Assets/Audio/story/ambient.mp3',storm:'Assets/Audio/story/storm.mp3',final:'Assets/Audio/story/final.mp3'});
+  assert.equal(c.celebrationMusic,'Assets/Audio/story/einhorn-party-song.mp3');
   assert.equal(c.finale.length,3);assert.equal(c.finale[0].text,'Die Zauberkräfte sind zurück! ✨');assert.equal(c.finale[0].visual,'finalPowers');
   assert.equal(c.finale[1].text,'Die Magie kehrt zurück … ✨');assert.equal(c.finale[1].visual,'forestTransform');assert.equal(c.finale[1].manual,true);assert.equal(c.finale[1].narration,false);
   assert.equal(c.finale[2].text,'Meine Magie ist wieder da! ✨');assert.equal(c.finale[2].visual,'finalMagic');assert.equal(c.finale[2].audioIndex,1);
@@ -543,6 +544,30 @@ test('music toggle stays off across story phases and remains independent from na
   assert.equal(finale.context.BackgroundMusic.snapshot().status,'paused');
   finale.click('musicToggle');
   assert.equal(finale.context.BackgroundMusic.snapshot().status,'playing');
+});
+test('last page replaces final music with the non-looping celebration song',()=>{
+  const s=finishState();s.rescued=true;s.birthdayComplete=true;s.currentScreen='done';
+  const h=harness(JSON.stringify(s));
+  assert.equal(h.audioCount(),2);assert.equal(h.context.StoryNarration.snapshot().status,'idle');
+  assert.equal(h.context.BackgroundMusic.snapshot().id,'celebration');assert.match(h.music().src,/einhorn-party-song\.mp3$/);
+  assert.equal(h.context.BackgroundMusic.snapshot().status,'playing');assert.equal(h.music().loop,false);assert.equal(h.music().volume,.10);
+  assert.doesNotMatch(h.music().src,/\/final\.mp3$/);
+
+  h.click('organizer');h.inputVolume(18);h.click('close');
+  assert.equal(h.context.BackgroundMusic.snapshot().normalVolume,.18);assert.equal(h.music().volume,.18);
+  h.music().currentTime=9;h.click('musicToggle');assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);assert.equal(h.context.BackgroundMusic.snapshot().status,'paused');
+  h.click('go',{screen:'home'});assert.equal(h.context.BackgroundMusic.snapshot().id,'final');assert.match(h.music().src,/\/final\.mp3$/);assert.equal(h.music().loop,true);assert.equal(h.music().currentTime,0);assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);
+  h.click('resume');assert.equal(h.state().currentScreen,'done');assert.equal(h.context.BackgroundMusic.snapshot().id,'celebration');assert.equal(h.music().loop,false);assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);
+  h.click('musicToggle');assert.equal(h.context.BackgroundMusic.snapshot().status,'playing');
+  h.music().emit('ended');assert.equal(h.context.BackgroundMusic.snapshot().status,'ended');assert.equal(h.music().loop,false);
+  h.music().currentTime=9;h.click('musicToggle');assert.equal(h.context.BackgroundMusic.snapshot().status,'playing');assert.equal(h.music().currentTime,0);
+});
+test('celebration song starts only after reward narration has stopped',()=>{
+  const s=finishState();s.rescued=true;s.currentScreen='rewards';s.rewardIndex=2;
+  const h=harness(JSON.stringify(s));assert.equal(h.context.StoryNarration.snapshot().status,'playing');assert.equal(h.context.BackgroundMusic.snapshot().id,'final');
+  h.click('rewardNext');
+  assert.equal(h.state().currentScreen,'done');assert.equal(h.context.StoryNarration.snapshot().status,'idle');assert.equal(h.audio().paused,true);
+  assert.equal(h.context.BackgroundMusic.snapshot().id,'celebration');assert.equal(h.context.BackgroundMusic.snapshot().status,'playing');
 });
 test('atmosphere follows storm and restored-magic story state',()=>{
   const intro=harness();fill(intro);intro.click('go',{screen:'reveal'});intro.click('go',{screen:'intro'});
