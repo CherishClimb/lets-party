@@ -4,7 +4,7 @@
 const C = window.CONTENT, G = window.Game, P = window.PhotoStore, N = window.StoryNarration, M = window.BackgroundMusic, U = C.ui;
 const app = document.querySelector('#app'), dialog = document.querySelector('#organizer');
 const STORAGE_KEY = 'unicorn-rescue-v1';
-let state = G.fresh(), storageError = '', presentation = false, scene = 0, timer = null, celebrationTimer = null, finalCelebrating = false, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0, lastStorm = null, memoryPhotos = [], photosReady = false;
+let state = G.fresh(), storageError = '', presentation = false, storyNavigation = 'manual', scene = 0, timer = null, celebrationTimer = null, finalCelebrating = false, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0, lastStorm = null, memoryPhotos = [], photosReady = false;
 const warmupPoses = Object.fromEntries(C.teams.map(t=>[t.id,[false,false,false]]));
 const sequence = ['home','setup','reveal','intro','warmup','level1','transition2','level2','transition3','level3','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -145,6 +145,8 @@ function updateMusicUi(snapshot=M?.snapshot?.()) {
 }
 function updateNarrationUi(snapshot=N?.snapshot?.()) {
   M?.setDucked?.(snapshot?.status==='playing');
+  if(snapshot?.status==='ended') scheduleScene();
+  else if(snapshot?.status==='playing'&&storyNavigation==='automatic'&&currentNarration()?.id===snapshot.id) cancelTimer();
   const controls=app.querySelector?.('.narration-controls'),target=currentNarration();
   if(!controls||!target||!snapshot||snapshot.id!==target.id) return;
   const unavailable=!snapshot.supported||['idle','loading','missing'].includes(snapshot.status);
@@ -287,9 +289,23 @@ function scheduleScene() {
   const screen=state.currentScreen;
   if (screen==='rewards' && !rewardShown && !dialog.open) { timer=setTimeout(()=>{rewardShown=true;document.querySelector('.reward')?.classList.add('revealed');},900); return; }
   const scenes=C[screen];
-  if (!Array.isArray(scenes) || dialog.open) return;
-  if(C.storyAudio?.[screen]?.[scene]) return;
-  if (!scenes[scene].manual && (scene<scenes.length-1 || screen==='finale')) timer=setTimeout(()=>advanceScene(),scenes[scene].duration);
+  if (storyNavigation!=='automatic'||!Array.isArray(scenes)||dialog.open) return;
+  const item=scenes[scene],last=scene===scenes.length-1;
+  if(item.manual||(screen==='intro'&&last)) return;
+  const target=currentNarration(),snapshot=N?.snapshot?.();
+  if(target) {
+    if(snapshot?.id!==target.id||snapshot.status!=='ended') return;
+    scheduleAutomaticAdvance(screen,scene,1400);
+    return;
+  }
+  if(item.duration) scheduleAutomaticAdvance(screen,scene,item.duration);
+}
+function scheduleAutomaticAdvance(screen,index,delay) {
+  timer=setTimeout(()=>{
+    timer=null;
+    const scenes=C[screen],item=Array.isArray(scenes)?scenes[index]:null;
+    if(storyNavigation==='automatic'&&state.currentScreen===screen&&scene===index&&!dialog.open&&item&&!item.manual) advanceScene();
+  },delay);
 }
 function advanceScene() {
   const screen=state.currentScreen, scenes=C[screen];
@@ -373,7 +389,7 @@ function openOrganizer(reset=false) {
     dialog.innerHTML='<h2>'+esc(U.resetQuestion)+'</h2><p>'+esc(U.resetDetail)+'</p><div class="actions">'+button(U.cancel,'organizer','','secondary')+button(U.confirmReset,'resetConfirm','','danger')+'</div>';
   } else {
     const idx=sequence.indexOf(state.currentScreen==='award'?'level'+(state.award.level+1):state.currentScreen), prev=sequence[Math.max(0,idx-1)], next=sequence[idx+1];
-    dialog.innerHTML='<div class="dialog-heading"><h2>'+esc(U.organizer)+'</h2>'+button(U.close,'close','','secondary')+'</div><button class="organizer-photo-button" data-action="photos"><span>'+esc(C.memoryPhotos.menu)+'</span><strong>'+esc(photoStatus())+'</strong></button><div class="actions">'+nav(U.back,prev,'secondary')+(next?nav(U.next,next,'secondary',!G.canVisit(state,next)):'')+'</div><h3>'+esc(U.jump)+'</h3><div class="jump-grid">'+['home','reveal','level1','level2','level3','destination','pinata','treasure','returnMessage','waiting','finale','progress'].map(s=>nav(C.screens[s],s,'secondary',!G.canVisit(state,s))).join('')+'</div><div class="actions">'+nav(U.edit,'setup','quiet')+nav(U.replayIntro,'intro','quiet')+nav(U.replayFinale,'finale','quiet',!G.canVisit(state,'finale'))+'</div><h3>'+esc(U.completions)+'</h3><div class="completion-editor">'+C.teams.map(t=>'<fieldset><legend>'+esc(t.name)+'</legend>'+C.powers.map((p,i)=>'<label><input type="checkbox" data-mark-team="'+t.id+'" data-mark-level="'+i+'"'+(state.teams[t.id].completedLevels[i]?' checked':'')+(!G.levelOpen(state,i)&&!state.teams[t.id].completedLevels[i]?' disabled':'')+'>'+p.icon+' '+esc(p.name)+'</label>').join('')+'</fieldset>').join('')+'</div><details><summary>'+esc(U.answers)+'</summary>'+C.teams.map(t=>'<p>'+esc(t.name)+' → <strong>'+esc(t.word)+'</strong></p>').join('')+'</details><hr>'+button(U.reset,'reset','','danger');
+    dialog.innerHTML='<div class="dialog-heading"><h2>'+esc(U.organizer)+'</h2>'+button(U.close,'close','','secondary')+'</div><fieldset class="story-control"><legend>'+esc(U.storyControl)+'</legend><label><input type="radio" name="story-navigation" value="manual" data-story-mode="manual"'+(storyNavigation==='manual'?' checked':'')+'> '+esc(U.storyManual)+'</label><label><input type="radio" name="story-navigation" value="automatic" data-story-mode="automatic"'+(storyNavigation==='automatic'?' checked':'')+'> '+esc(U.storyAutomatic)+'</label></fieldset><button class="organizer-photo-button" data-action="photos"><span>'+esc(C.memoryPhotos.menu)+'</span><strong>'+esc(photoStatus())+'</strong></button><div class="actions">'+nav(U.back,prev,'secondary')+(next?nav(U.next,next,'secondary',!G.canVisit(state,next)):'')+'</div><h3>'+esc(U.jump)+'</h3><div class="jump-grid">'+['home','reveal','level1','level2','level3','destination','pinata','treasure','returnMessage','waiting','finale','progress'].map(s=>nav(C.screens[s],s,'secondary',!G.canVisit(state,s))).join('')+'</div><div class="actions">'+nav(U.edit,'setup','quiet')+nav(U.replayIntro,'intro','quiet')+nav(U.replayFinale,'finale','quiet',!G.canVisit(state,'finale'))+'</div><h3>'+esc(U.completions)+'</h3><div class="completion-editor">'+C.teams.map(t=>'<fieldset><legend>'+esc(t.name)+'</legend>'+C.powers.map((p,i)=>'<label><input type="checkbox" data-mark-team="'+t.id+'" data-mark-level="'+i+'"'+(state.teams[t.id].completedLevels[i]?' checked':'')+(!G.levelOpen(state,i)&&!state.teams[t.id].completedLevels[i]?' disabled':'')+'>'+p.icon+' '+esc(p.name)+'</label>').join('')+'</fieldset>').join('')+'</div><details><summary>'+esc(U.answers)+'</summary>'+C.teams.map(t=>'<p>'+esc(t.name)+' → <strong>'+esc(t.word)+'</strong></p>').join('')+'</details><hr>'+button(U.reset,'reset','','danger');
   }
   if(!dialog.open) dialog.showModal();
 }
@@ -442,6 +458,7 @@ document.addEventListener('input',event=>{
 });
 document.addEventListener('change',event=>{
   const el=event.target;
+  if(el.dataset.storyMode&&el.checked) {storyNavigation=el.dataset.storyMode==='automatic'?'automatic':'manual';cancelTimer();return;}
   if(el.dataset.photoInput!==undefined) {void processPhotoFiles(el.files);el.value='';return;}
   if(el.dataset.photoReplace!==undefined) {void processPhotoFiles(el.files,el.dataset.photoReplace);el.value='';return;}
   if(el.dataset.child!==undefined) {

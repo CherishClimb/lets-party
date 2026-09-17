@@ -154,6 +154,9 @@ dialog::backdrop { background:#203d3866; backdrop-filter:blur(5px); }
 fieldset { border:1px solid var(--line); border-radius:12px; padding:12px; display:flex; gap:15px; flex-wrap:wrap; }
 legend { font-weight:700; }fieldset label { display:flex; align-items:center; gap:6px; }
 input[type=checkbox] { width:22px; height:22px; accent-color:var(--green); }
+.story-control { margin:18px 0 8px; padding:14px 16px; gap:12px 24px; border-radius:16px; background:#f7fbf8; }
+.story-control label { min-height:38px; font-size:.95rem; cursor:pointer; }
+.story-control input[type=radio] { width:21px; height:21px; margin:0; accent-color:var(--green); }
 details { padding:15px 0; }summary { cursor:pointer; font-weight:700; min-height:35px; }details p { margin:12px 0; }
 hr { border:0; border-top:1px solid var(--line); margin:20px 0; }
 #notice:not(:empty) { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); max-width:min(600px,calc(100% - 28px)); width:max-content; padding:14px 22px; border-radius:14px; background:var(--ink); color:white; box-shadow:0 8px 30px #0002; z-index:5; font-size:.9rem; pointer-events:none; }

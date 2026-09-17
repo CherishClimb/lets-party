@@ -120,7 +120,7 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   assert.doesNotMatch(h.html(),/type="file"|capture=/);
   h.click('go',{screen:'level1'});complete(h,0);
   assert.equal(h.state().currentScreen,'level1');
-  h.click('go',{screen:'transition2'});h.tick();assert.match(h.html(),/NUR NOCH 4 MATTEN/);
+  h.click('go',{screen:'transition2'});assert.equal(h.timerCount(),0);h.click('sceneNext');assert.match(h.html(),/NUR NOCH 4 MATTEN/);
   h.click('sceneNext');assert.equal(h.state().currentScreen,'level2');complete(h,1);
   h.click('go',{screen:'transition3'});assert.match(h.html(),/geheime Spur/);h.click('sceneNext');
   assert.equal(h.state().currentScreen,'level3');
@@ -132,14 +132,14 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   assert.match(h.html(),/Was könnte das bedeuten/);assert.match(h.html(),/ZAUBERWÖRTER VERBINDEN/);
   assert.equal(h.timerCount(),0,'word reveal waits for the organizer to combine them');
   h.click('sceneNext');assert.match(h.html(),/BREITWIESENSCHULE/);
-  h.tick();assert.match(h.html(),/HOF/);assert.equal(h.state().clueRevealed,true);
-  h.tick();assert.match(h.html(),/KLUGHEIT IST ZURÜCK/);
-  h.tick();assert.match(h.html(),/DIE SPUR FÜHRT ZUM SCHULHOF/);
+  h.click('sceneNext');assert.match(h.html(),/HOF/);assert.equal(h.state().clueRevealed,true);
+  h.click('sceneNext');assert.match(h.html(),/KLUGHEIT IST ZURÜCK/);
+  h.click('sceneNext');assert.match(h.html(),/DIE SPUR FÜHRT ZUM SCHULHOF/);
   h.click('sceneNext');assert.equal(h.state().currentScreen,'pinata');
   assert.match(h.html(),/SUCHT DEN EINHORN-SCHATZ/);assert.equal(h.timerCount(),0);
   h.click('treasureFound');assert.equal(h.state().currentScreen,'treasure');
   assert.match(h.html(),/kleine Geburtstagsüberraschung/);assert.equal(h.timerCount(),0);
-  h.click('prizesOpened');h.tick();h.tick();assert.match(h.html(),/KEHRT ZURÜCK/);
+  h.click('prizesOpened');h.click('sceneNext');h.click('sceneNext');assert.match(h.html(),/KEHRT ZURÜCK/);
   h.click('sceneNext');assert.equal(h.state().currentScreen,'waiting');
   assert.match(h.html(),/Alle drei Zauberkräfte sind sicher/);assert.equal(h.timerCount(),0);
   assert.doesNotMatch(h.html(),/mascot unicorn|Zaubertrank|Zauberschokolade|Marshmallow/);
@@ -290,6 +290,71 @@ test('story narration and background music have central mappings',()=>{
   for(const [from,to] of Object.entries(c.storyNext)) {
     assert.ok(Array.isArray(c[from]),from);assert.ok(c.screens[to],to);
   }
+});
+test('story navigation defaults to manual and never advances from audio or animation timers',()=>{
+  const h=harness();fill(h);h.click('go',{screen:'intro'});
+  const before=h.serialized();
+  h.click('organizer');
+  assert.match(h.elements['#organizer'].innerHTML,/Story-Steuerung/);
+  assert.match(h.elements['#organizer'].innerHTML,/data-story-mode="manual" checked/);
+  assert.match(h.elements['#organizer'].innerHTML,/data-story-mode="automatic"/);
+  h.click('close');
+  h.audio().emit('ended');
+  assert.equal(h.timerCount(),0);
+  assert.equal(h.state().currentScreen,'intro');
+  assert.match(h.html(),/6 Jahre alt – genau wie Lucy/);
+  assert.equal(h.serialized(),before);
+
+  const transitionState=G.fresh();transitionState.children[0].name='Emma';transitionState.introCompleted=true;
+  G.teamIds.forEach(id=>G.mark(transitionState,id,0,true));transitionState.currentScreen='transition2';
+  const transition=harness(JSON.stringify(transitionState));
+  assert.equal(transition.timerCount(),0);
+  assert.match(transition.html(),/Zaubersturm ist noch nicht vorbei/);
+});
+test('automatic story navigation follows safe story scenes and stops at confirmations',()=>{
+  const h=harness();fill(h);h.click('go',{screen:'intro'});
+  const progress=h.serialized();
+  h.click('organizer');
+  h.change({dataset:{storyMode:'automatic'},checked:true});
+  assert.equal(h.serialized(),progress,'changing navigation mode does not touch saved progress');
+  h.click('close');
+  h.audio().emit('ended');assert.equal(h.timerCount(),1);
+  h.click('narrationReplay');assert.equal(h.timerCount(),0,'replaying narration cancels the pending advance');
+  h.audio().emit('ended');assert.equal(h.timerCount(),1);h.tick();
+  for(let i=1;i<5;i++) {
+    h.audio().emit('ended');
+    assert.equal(h.timerCount(),1,'narrated story scene waits briefly before advancing');
+    h.tick();
+  }
+  assert.match(h.html(),/RETTEN WIR DAS EINHORN!/);
+  h.audio().emit('ended');
+  assert.equal(h.timerCount(),0,'the start-adventure confirmation remains manual');
+  assert.equal(h.state().currentScreen,'intro');
+  h.click('organizer');
+  assert.match(h.elements['#organizer'].innerHTML,/data-story-mode="automatic" checked/);
+  h.click('close');
+
+  const transitionState=G.fresh();transitionState.children[0].name='Emma';transitionState.introCompleted=true;
+  G.teamIds.forEach(id=>G.mark(transitionState,id,0,true));transitionState.currentScreen='transition2';
+  const transition=harness(JSON.stringify(transitionState));
+  transition.click('organizer');transition.change({dataset:{storyMode:'automatic'},checked:true});transition.click('close');
+  assert.equal(transition.timerCount(),1);
+  transition.tick();assert.match(transition.html(),/NUR NOCH 4 MATTEN/);
+  assert.equal(transition.timerCount(),1);
+  transition.tick();assert.equal(transition.state().currentScreen,'level2');
+  assert.equal(transition.timerCount(),0,'mission pages never schedule automatic navigation');
+
+  const foundState=finishState();foundState.currentScreen='found';
+  const found=harness(JSON.stringify(foundState));
+  found.click('organizer');found.change({dataset:{storyMode:'automatic'},checked:true});found.click('close');
+  found.audio().emit('ended');
+  assert.equal(found.state().currentScreen,'found');assert.equal(found.timerCount(),0);
+
+  const rewardState=finishState();rewardState.rescued=true;rewardState.currentScreen='rewards';
+  const reward=harness(JSON.stringify(rewardState));
+  reward.click('organizer');reward.change({dataset:{storyMode:'automatic'},checked:true});reward.click('close');
+  reward.tick();reward.audio().emit('ended');
+  assert.equal(reward.state().rewardIndex,0);assert.equal(reward.timerCount(),0);
 });
 test('one narration player follows intro scenes and supports pause, resume and replay',()=>{
   const h=harness();fill(h);h.click('go',{screen:'intro'});
