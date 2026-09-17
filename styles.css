@@ -160,6 +160,9 @@ input[type=checkbox] { width:22px; height:22px; accent-color:var(--green); }
 details { padding:15px 0; }summary { cursor:pointer; font-weight:700; min-height:35px; }details p { margin:12px 0; }
 hr { border:0; border-top:1px solid var(--line); margin:20px 0; }
 #notice:not(:empty) { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); max-width:min(600px,calc(100% - 28px)); width:max-content; padding:14px 22px; border-radius:14px; background:var(--ink); color:white; box-shadow:0 8px 30px #0002; z-index:5; font-size:.9rem; pointer-events:none; }
+#offline-status { position:fixed; left:12px; bottom:12px; z-index:30; padding:6px 10px; border:1px solid #d8e3db; border-radius:999px; color:#42645d; background:#fffdf8e8; box-shadow:0 4px 14px #29493f18; font-size:.72rem; font-weight:750; pointer-events:none; backdrop-filter:blur(8px); }
+#offline-status[hidden] { display:none; }
+#offline-status.is-offline { color:#fff; border-color:#345c54; background:#345c54e8; }
 .presentation { font-size:1.25rem; }.presentation main { max-width:1800px; }.presentation .organizer-only { display:none; }.presentation .primary { font-size:1.2rem; }.presentation .team-card h2 { font-size:clamp(1.4rem,2.4vw,2.4rem); }.presentation .roster strong { font-size:1.7rem; }.presentation .lead { font-size:clamp(1.3rem,2.2vw,2rem); }
 /* The same rounded eyes, cheeks and simple shapes unite the four mascots. */
 .mascot { position:relative; width:155px; height:155px; flex-shrink:0; }

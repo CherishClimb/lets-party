@@ -4,7 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f8f7ef">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Let's Party">
   <title></title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="Assets/magic/sparkling_pastel_rainbow_unicorn.png.png">
+  <link rel="apple-touch-icon" href="Assets/magic/sparkling_pastel_rainbow_unicorn.png.png">
   <link rel="stylesheet" href="styles.css">
   <script defer src="content.js"></script>
   <script defer src="game.js"></script>
@@ -17,6 +24,7 @@
   <main id="app" tabindex="-1"></main>
   <footer id="footer"></footer>
   <div id="notice" role="status" aria-live="polite"></div>
+  <div id="offline-status" role="status" aria-live="polite" hidden></div>
   <dialog id="organizer"></dialog>
 </body>
 </html>

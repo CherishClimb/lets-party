@@ -114,6 +114,35 @@ function clearMemoryPhotos(updateView=true) {
   if(updateView&&state.currentScreen==='done') render();
   return clearing;
 }
+function setupOfflineSupport() {
+  if(typeof navigator==='undefined') return;
+  const indicator=document.querySelector('#offline-status');
+  let ready=false;
+  const showStatus=()=>{
+    if(!indicator) return;
+    if(navigator.onLine===false) {
+      indicator.textContent=U.offline;
+      indicator.className='is-offline';
+      indicator.hidden=false;
+      return;
+    }
+    if(!ready) {indicator.hidden=true;return;}
+    indicator.textContent=U.offlineReady;
+    indicator.className='is-ready';
+    indicator.hidden=false;
+  };
+  window.addEventListener?.('online',showStatus);
+  window.addEventListener?.('offline',showStatus);
+  showStatus();
+  if(!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.addEventListener?.('controllerchange',()=>{ready=true;showStatus();});
+  window.addEventListener?.('load',()=>{
+    navigator.serviceWorker.register('./service-worker.js',{scope:'./'})
+      .then(()=>navigator.serviceWorker.ready)
+      .then(()=>{ready=true;showStatus();})
+      .catch(()=>{});
+  });
+}
 try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) state=G.normalize(JSON.parse(saved)); } catch { storageError=U.corruptSave; }
 C.teams.forEach(t=>{ if(state.teams[t.id].gesture!==null) warmupPoses[t.id].fill(true); });
 document.title = C.app.title;
@@ -476,6 +505,7 @@ document.addEventListener('change',event=>{
 dialog.addEventListener('close',()=>scheduleScene());
 N?.subscribe?.(updateNarrationUi);
 M?.subscribe?.(updateMusicUi);
+setupOfflineSupport();
 render();
 void refreshMemoryPhotos();
 })();

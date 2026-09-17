@@ -227,6 +227,8 @@ window.CONTENT = {
     "progress": "Unsere Zauberkraft",
     "musicOn": "🎵 Musik an",
     "musicOff": "⏸ Musik aus",
+    "offlineReady": "Offline bereit ✓",
+    "offline": "Offline",
     "magicProgress": "Gefundene Zauberkräfte",
     "setup": "Kinder & Teams vorbereiten",
     "startSetup": "ABENTEUER STARTEN",

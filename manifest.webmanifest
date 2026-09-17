@@ -1,0 +1,20 @@
+{
+  "name": "Let's Party – Einhorn Abenteuer",
+  "short_name": "Let's Party",
+  "description": "Lucys magisches Einhorn-Geburtstagsabenteuer",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fff9ee",
+  "theme_color": "#f8f7ef",
+  "icons": [
+    {
+      "src": "Assets/magic/sparkling_pastel_rainbow_unicorn.png.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
