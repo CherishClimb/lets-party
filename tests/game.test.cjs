@@ -21,6 +21,9 @@ function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok') 
   }
   const element = () => ({innerHTML:'',textContent:'',open:false,hidden:false,focus(){},querySelector(){return null;},setAttribute(){},classList:{toggle(){},add(){}},handlers:{},addEventListener(type,fn){this.handlers[type]=fn;}});
   const elements = Object.fromEntries(['#app','#header','#footer','#notice','#organizer','.reward'].map(k=>[k,element()]));
+  const narrationButton=element(),narrationControls=element();
+  narrationControls.querySelector=selector=>selector==='.narration-toggle'?narrationButton:null;
+  elements['#app'].querySelector=selector=>selector==='.narration-controls'?narrationControls:null;
   const dialog=elements['#organizer'];
   dialog.showModal=()=>{dialog.open=true;};
   dialog.close=()=>{dialog.open=false;dialog.handlers['close']?.();};
@@ -47,7 +50,9 @@ function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok') 
     serialized:()=>stored,
     audio:()=>audioInstances[0],
     music:()=>audioInstances[1],
-    audioCount:()=>audioInstances.length
+    audioCount:()=>audioInstances.length,
+    narrationButton:()=>narrationButton,
+    narrationControls:()=>narrationControls
   };
 }
 function fill(h) { h.click('go',{screen:'setup'}); h.input(0,'Emma');h.input(4,'Noah');h.input(8,'Mia'); }
@@ -318,8 +323,6 @@ test('automatic story navigation follows safe story scenes and stops at confirma
   h.change({dataset:{storyMode:'automatic'},checked:true});
   assert.equal(h.serialized(),progress,'changing navigation mode does not touch saved progress');
   h.click('close');
-  h.audio().emit('ended');assert.equal(h.timerCount(),1);
-  h.click('narrationReplay');assert.equal(h.timerCount(),0,'replaying narration cancels the pending advance');
   h.audio().emit('ended');assert.equal(h.timerCount(),1);h.tick();
   for(let i=1;i<5;i++) {
     h.audio().emit('ended');
@@ -356,18 +359,20 @@ test('automatic story navigation follows safe story scenes and stops at confirma
   reward.tick();reward.audio().emit('ended');
   assert.equal(reward.state().rewardIndex,0);assert.equal(reward.timerCount(),0);
 });
-test('one narration player follows intro scenes and supports pause, resume and replay',()=>{
+test('one small narration button pauses and resumes the reusable narration player',()=>{
   const h=harness();fill(h);h.click('go',{screen:'intro'});
   assert.equal(h.context.StoryNarration.snapshot().id,'intro:1');
   assert.equal(h.context.StoryNarration.snapshot().status,'playing');
   assert.match(h.audio().src,/scene-01\.mp3$/);assert.equal(h.timerCount(),0);assert.equal(h.audioCount(),2);
-  assert.match(h.html(),/Geschichte starten/);assert.match(h.html(),/Nochmal h/);
+  assert.equal((h.html().match(/data-action="narrationToggle"/g)||[]).length,1);
+  assert.doesNotMatch(h.html(),/Nochmal h|Geschichte starten|narration-replay|narration-start/);
+  assert.equal(h.narrationButton().textContent,'⏸');assert.equal(h.narrationControls().hidden,false);
   h.audio().currentTime=4;h.click('narrationToggle');assert.equal(h.context.StoryNarration.snapshot().status,'paused');assert.equal(h.audio().currentTime,4);
-  h.click('narrationToggle');assert.equal(h.context.StoryNarration.snapshot().status,'playing');
-  h.audio().currentTime=5;h.click('narrationReplay');assert.equal(h.audio().currentTime,0);
+  assert.equal(h.narrationButton().textContent,'▶');
+  h.click('narrationToggle');assert.equal(h.context.StoryNarration.snapshot().status,'playing');assert.equal(h.narrationButton().textContent,'⏸');
   const pauses=h.audio().pauseCalls;h.click('sceneNext');
   assert.equal(h.context.StoryNarration.snapshot().id,'intro:2');assert.match(h.audio().src,/scene-02\.mp3$/);assert.ok(h.audio().pauseCalls>pauses);
-  h.audio().emit('ended');assert.equal(h.context.StoryNarration.snapshot().status,'ended');assert.equal(h.timerCount(),0);
+  h.audio().emit('ended');assert.equal(h.context.StoryNarration.snapshot().status,'ended');assert.equal(h.timerCount(),0);assert.equal(h.narrationControls().hidden,true);
   assert.equal(h.context.StoryNarration.snapshot().id,'intro:2');
   h.click('skip');assert.equal(h.context.StoryNarration.snapshot().status,'idle');assert.equal(h.audio().src,'');
 });
@@ -375,7 +380,7 @@ test('blocked autoplay can be unlocked without changing the scene',async()=>{
   const h=harness(undefined,false,null,'blocked');fill(h);h.click('go',{screen:'intro'});
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(h.context.StoryNarration.snapshot().status,'blocked');assert.equal(h.context.StoryNarration.snapshot().id,'intro:1');
-  h.audio().mode='ok';h.music().mode='ok';h.click('narrationStart');await new Promise(resolve=>setImmediate(resolve));
+  h.audio().mode='ok';h.music().mode='ok';h.click('narrationToggle');await new Promise(resolve=>setImmediate(resolve));
   assert.equal(h.context.StoryNarration.snapshot().status,'playing');assert.equal(h.context.StoryNarration.snapshot().id,'intro:1');assert.equal(h.context.BackgroundMusic.snapshot().status,'playing');
 });
 test('missing narration stays hidden and never blocks story navigation',async()=>{
@@ -433,7 +438,7 @@ test('music toggle stays off across story phases and remains independent from na
   h.click('narrationToggle');
   assert.equal(h.context.StoryNarration.snapshot().status,'paused');
   assert.equal(h.context.BackgroundMusic.snapshot().status,'paused');
-  h.click('narrationReplay');
+  h.click('narrationToggle');
   assert.equal(h.context.StoryNarration.snapshot().status,'playing');
   assert.equal(h.context.BackgroundMusic.snapshot().enabled,false);
 

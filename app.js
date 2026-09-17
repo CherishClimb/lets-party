@@ -161,7 +161,7 @@ function currentNarration() {
 }
 function narrationControls() {
   const n=C.narration;
-  return '<div class="narration-controls" hidden><span class="narration-label"><i aria-hidden="true">♪</i>'+esc(n.label)+'</span><div class="narration-actions">'+button(n.start,'narrationStart','','secondary narration-start')+button(n.pause,'narrationToggle','','secondary narration-toggle')+button(n.replay,'narrationReplay','','quiet narration-replay')+'</div></div>';
+  return '<div class="narration-controls" hidden>'+button('▶','narrationToggle','aria-label="'+esc(n.resume)+'" title="'+esc(n.resume)+'"','narration-toggle')+'</div>';
 }
 function musicButton(kind='quiet') {
   const playing=M?.snapshot?.().status==='playing';
@@ -182,14 +182,15 @@ function updateNarrationUi(snapshot=N?.snapshot?.()) {
   else if(snapshot?.status==='playing'&&storyNavigation==='automatic'&&currentNarration()?.id===snapshot.id) cancelTimer();
   const controls=app.querySelector?.('.narration-controls'),target=currentNarration();
   if(!controls||!target||!snapshot||snapshot.id!==target.id) return;
-  const unavailable=!snapshot.supported||['idle','loading','missing'].includes(snapshot.status);
+  const unavailable=!snapshot.supported||['idle','loading','missing','ended'].includes(snapshot.status);
   controls.hidden=unavailable;
   if(unavailable) return;
   const blocked=snapshot.status==='blocked',playing=snapshot.status==='playing';
   controls.classList.toggle('is-playing',playing);
-  const start=controls.querySelector('.narration-start'),toggle=controls.querySelector('.narration-toggle'),replay=controls.querySelector('.narration-replay');
-  start.hidden=!blocked;toggle.hidden=blocked;replay.hidden=blocked;
-  toggle.textContent=playing?C.narration.pause:C.narration.resume;
+  const toggle=controls.querySelector('.narration-toggle'),label=playing?C.narration.pause:blocked?C.narration.start:C.narration.resume;
+  toggle.textContent=playing?'⏸':'▶';
+  toggle.setAttribute('aria-label',label);
+  toggle.setAttribute('title',label);
 }
 function syncNarration() {
   const target=currentNarration();
@@ -453,9 +454,7 @@ document.addEventListener('click', event=>{
     case 'photoRemoveAll': void clearMemoryPhotos(true); break;
     case 'celebrate': replayFinalCelebration(); break;
     case 'musicToggle': M?.toggle?.(); break;
-    case 'narrationStart': void N?.play?.(); void M?.play?.(); break;
     case 'narrationToggle': N?.toggle?.(); break;
-    case 'narrationReplay': N?.replay?.(); break;
     case 'close': dialog.close(); break;
     case 'reset': openOrganizer(true); break;
     case 'resetConfirm': clearMemoryPhotos(false); state=G.fresh(); C.teams.forEach(t=>warmupPoses[t.id].fill(false)); warmupTeam=0; returnScreen='home'; presentation=false; go('home'); note(U.resetDone); break;
