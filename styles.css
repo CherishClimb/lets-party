@@ -226,7 +226,16 @@ hr { border:0; border-top:1px solid var(--line); margin:20px 0; }
 .final-return-powers .power:nth-child(1) { --start-x:-230px; --start-y:-78px; animation-delay:.05s; }
 .final-return-powers .power:nth-child(2) { --start-x:230px; --start-y:-70px; animation-delay:.42s; }
 .final-return-powers .power:nth-child(3) { --start-x:0px; --start-y:126px; animation-delay:.79s; }
-.final-magic-visual { position:relative; width:min(100%,560px); height:clamp(250px,34vw,320px); margin:0 auto; overflow:hidden; display:grid; place-items:center; border-radius:46% 46% 42% 42% / 50% 50% 38% 38%; background:radial-gradient(circle at 50% 78%,rgba(249,224,121,.88),transparent 31%),linear-gradient(180deg,#66778a 0%,#8ca09e 55%,#58765e 100%); box-shadow:inset 0 0 45px rgba(24,43,61,.28),0 12px 30px rgba(62,92,74,.15); animation:final-forest-brightens 4.2s ease-in-out both; }
+.forest-transformation-visual { position:relative; width:min(100%,680px); height:clamp(250px,36vw,360px); margin:0 auto; overflow:hidden; border-radius:42px; isolation:isolate; box-shadow:0 18px 42px rgba(29,50,56,.22); }
+.transform-day-forest,.transform-storm-forest,.transform-warmth { position:absolute; inset:0; }
+.transform-day-forest { z-index:0; background:url("Assets/magic/forest-day.png.png") center/cover; animation:transform-day-awakens 3.4s ease-in-out both; }
+.transform-storm-forest { z-index:1; background:linear-gradient(rgba(25,35,55,.42),rgba(25,35,55,.42)),url("Assets/magic/enchanted_forest_stormscape_with_castle.png.png") center/cover; animation:transform-storm-clears 3.4s ease-in-out both; }
+.transform-warmth { z-index:2; background:radial-gradient(circle at 58% 30%,rgba(255,244,164,.78),transparent 42%); opacity:0; animation:transform-warmth-arrives 3.4s ease-in-out both; }
+.forest-transformation-visual img { position:absolute; z-index:3; right:-7%; bottom:-16%; width:clamp(180px,30vw,300px); opacity:0; animation:transform-nature-returns 3.4s ease-in-out both; }
+.transform-spark { position:absolute; z-index:4; color:#fff7a9; font-size:clamp(1.6rem,4vw,2.8rem); opacity:0; filter:drop-shadow(0 0 9px #fff2a1); animation:transform-spark-arrives 1.25s ease-in-out forwards; }
+.transform-spark-one { left:18%; top:24%; animation-delay:1.55s; }.transform-spark-two { right:18%; top:18%; animation-delay:2.05s; }.transform-spark-three { left:48%; bottom:18%; animation-delay:2.45s; }
+.story.forestTransform .actions { opacity:0; visibility:hidden; pointer-events:none; animation:transformation-control-in .4s 3.25s ease forwards; }
+.final-magic-visual { position:relative; width:min(100%,560px); height:clamp(250px,34vw,320px); margin:0 auto; overflow:hidden; display:grid; place-items:center; border-radius:46% 46% 42% 42% / 50% 50% 38% 38%; background:radial-gradient(circle at 50% 78%,rgba(249,224,121,.88),transparent 31%),url("Assets/magic/forest-day.png.png") center/cover; box-shadow:inset 0 0 45px rgba(255,244,178,.24),0 12px 30px rgba(62,92,74,.15); animation:final-forest-brightens 4.2s ease-in-out both; }
 .final-magic-visual::before,.final-magic-visual::after { content:""; position:absolute; bottom:-13%; width:46%; height:75%; border-radius:65% 65% 18% 18%; background:linear-gradient(135deg,#34594a,#769b68); opacity:.82; }
 .final-magic-visual::before { left:-18%; transform:rotate(14deg); }
 .final-magic-visual::after { right:-18%; transform:rotate(-14deg); }
@@ -292,7 +301,13 @@ hr { border:0; border-top:1px solid var(--line); margin:20px 0; }
 @keyframes final-power-fly { 0% { opacity:0; transform:translate(calc(-50% + var(--start-x)),calc(-50% + var(--start-y))) scale(.6); } 18% { opacity:1; transform:translate(calc(-50% + var(--start-x)),calc(-50% + var(--start-y))) scale(1); } 68% { opacity:1; transform:translate(-50%,-50%) scale(.72); } 88%,100% { opacity:0; transform:translate(-50%,-50%) scale(.28); filter:brightness(1.65); } }
 @keyframes final-unicorn-receives { 0%,52% { transform:translateY(3px) scale(.96); filter:drop-shadow(0 8px 9px rgba(52,71,84,.18)); } 76% { transform:translateY(-5px) scale(1.06); filter:drop-shadow(0 0 20px rgba(255,228,105,.92)); } 100% { transform:translateY(0) scale(1); filter:drop-shadow(0 0 13px rgba(255,228,105,.64)); } }
 @keyframes final-return-glow { 0%,50% { opacity:.15; transform:scale(.72); } 78% { opacity:1; transform:scale(1.12); } 100% { opacity:.68; transform:scale(1); } }
-@keyframes final-forest-brightens { 0%,14% { filter:saturate(.72) brightness(.76); } 100% { filter:saturate(1.08) brightness(1.08); box-shadow:inset 0 0 45px rgba(255,244,178,.24),0 12px 30px rgba(62,92,74,.15); } }
+@keyframes transform-day-awakens { 0%,12% { filter:saturate(.55) brightness(.72); } 100% { filter:saturate(1.08) brightness(1.06); } }
+@keyframes transform-storm-clears { 0%,16% { opacity:1; } 100% { opacity:0; } }
+@keyframes transform-warmth-arrives { 0%,35% { opacity:0; } 100% { opacity:1; } }
+@keyframes transform-nature-returns { 0%,40% { opacity:0; transform:translate(24px,20px) scale(.9); } 100% { opacity:.82; transform:none; } }
+@keyframes transform-spark-arrives { 0% { opacity:0; transform:scale(.35) rotate(-20deg); } 55% { opacity:1; transform:scale(1.18); } 100% { opacity:.88; transform:scale(1); } }
+@keyframes transformation-control-in { 0% { opacity:0; visibility:hidden; } 1% { visibility:visible; } 100% { opacity:1; visibility:visible; pointer-events:auto; } }
+@keyframes final-forest-brightens { 0%,14% { filter:saturate(.96) brightness(.98); } 100% { filter:saturate(1.08) brightness(1.06); } }
 @keyframes final-unicorn-awakens { 0%,20% { opacity:.72; transform:scale(.9); filter:saturate(.6) brightness(.75); } 70% { opacity:1; transform:scale(1.07); filter:saturate(1.15) brightness(1.15) drop-shadow(0 0 22px rgba(255,235,133,.9)); } 100% { opacity:1; transform:scale(1); filter:drop-shadow(0 0 14px rgba(255,235,133,.65)); } }
 @keyframes final-sparkle-awakens { 0%,100% { opacity:.35; transform:scale(.72) rotate(-8deg); } 50% { opacity:1; transform:scale(1.18) rotate(8deg); } }
 @keyframes search-trail-hint { 0%,100% { opacity:.2; transform:translateY(4px) scale(.72); } 40% { opacity:1; transform:translateY(-3px) scale(1.12); } }
@@ -550,6 +565,8 @@ body.scene-storm footer { color:#384b55; }
 .storm-decor::before { z-index:0; background:rgba(25,35,55,.43); animation:storm-darken .7s ease both; }
 .storm-decor::after { z-index:0; background:radial-gradient(circle at 72% 15%,rgba(230,241,255,.34),transparent 36%); opacity:0; animation:storm-soft-flash 12s ease-in-out infinite; }
 .sunny-return-decor::before { content:''; position:absolute; inset:0; z-index:0; pointer-events:none; background:linear-gradient(rgba(25,35,55,.43),rgba(25,35,55,.43)),url("Assets/magic/enchanted_forest_stormscape_with_castle.png.png") center / cover fixed; animation:sunny-return .85s ease both; }
+.forest-transform-decor::before { content:''; position:absolute; inset:0; z-index:0; pointer-events:none; background:linear-gradient(rgba(25,35,55,.43),rgba(25,35,55,.43)),url("Assets/magic/enchanted_forest_stormscape_with_castle.png.png") center / cover fixed; animation:transform-storm-clears 3.4s ease-in-out both; }
+.forest-transform-decor .decor-flowers,.forest-transform-decor .decor-butterflies,.forest-transform-decor .decor-sparkles { opacity:0; animation:transform-world-decor-in 1.4s 1.75s ease-out forwards; }
 .ambient-decor img { position:absolute; display:block; user-select:none; }
 .decor-leaves { width:clamp(210px,25vw,400px); top:-7%; left:-5%; opacity:.72; transform-origin:20% 20%; animation:branch-sway 7s ease-in-out infinite alternate; }
 .storm-decor .decor-leaves { opacity:.56; animation:storm-branch 1.8s ease-in-out infinite alternate; }
@@ -597,6 +614,7 @@ body.scene-storm #app > .page-heading {
 }
 body.scene-storm .story::before { color:#bfd0e5; }
 body.scene-storm .story-art { background:#cbd5e1c7; }
+body.scene-transform .story { animation:transform-panel-restores 3.4s ease-in-out both; }
 
 body.birthday-mode {
   background:
@@ -612,6 +630,8 @@ body.birthday-mode {
 @keyframes storm-darken { from { opacity:0; } to { opacity:1; } }
 @keyframes storm-soft-flash { 0%,86%,91%,100% { opacity:0; } 88% { opacity:.12; } }
 @keyframes sunny-return { from { opacity:1; } to { opacity:0; } }
+@keyframes transform-panel-restores { 0%,16% { background:rgba(232,238,247,.66); border-color:rgba(255,255,255,.30); box-shadow:0 24px 70px #101b2a2b; } 100% { background:linear-gradient(155deg,#fffdf8e8,#eef8f3df); border-color:#fff; box-shadow:0 24px 65px #35564b18; } }
+@keyframes transform-world-decor-in { from { opacity:0; transform:translateY(12px) scale(.96); } to { opacity:.62; transform:none; } }
 @keyframes butterfly-drift { to { transform:translate(-16px,14px) rotate(-3deg); } }
 @keyframes sparkle-breathe { to { opacity:.82; transform:scale(1.05) rotate(2deg); } }
 @keyframes unicorn-float { 50% { transform:translateY(-9px); } }
@@ -630,9 +650,12 @@ body.birthday-mode {
 }
 
 @media(prefers-reduced-motion:reduce) {
-  .decor-leaves,.decor-butterflies,.decor-sparkles,.magic-unicorn,.birthday-balloons-asset,.treasure-image,.storm-decor::before,.storm-decor::after,.sunny-return-decor::before { animation:none!important; }
+  .decor-leaves,.decor-butterflies,.decor-sparkles,.magic-unicorn,.birthday-balloons-asset,.treasure-image,.storm-decor::before,.storm-decor::after,.sunny-return-decor::before,.forest-transform-decor::before,.forest-transformation-visual *,.story.forestTransform .actions,body.scene-transform .story { animation:none!important; }
   .storm-decor::before { opacity:1; }
   .sunny-return-decor::before { opacity:0; }
+  .forest-transform-decor::before,.transform-storm-forest { opacity:0; }
+  .forest-transform-decor .decor-flowers,.forest-transform-decor .decor-butterflies,.forest-transform-decor .decor-sparkles,.forest-transformation-visual img,.transform-warmth,.transform-spark { opacity:.82; }
+  .story.forestTransform .actions { opacity:1; visibility:visible; pointer-events:auto; }
 }
 
 /* Organizer-managed memory photos. */
@@ -730,7 +753,7 @@ body.birthday-mode {
   body.cinematic-mode .story>.scene-dots { grid-column:2; grid-row:4; margin:2px 0; }
   body.cinematic-mode .story>.actions { grid-column:2; grid-row:5; margin:12px 0 0; }
   body.cinematic-mode .story-art { width:min(36vw,430px); height:min(43dvh,310px); }
-  body.cinematic-mode .final-power-return,body.cinematic-mode .final-magic-visual { height:min(52dvh,360px); }
+  body.cinematic-mode .final-power-return,body.cinematic-mode .forest-transformation-visual,body.cinematic-mode .final-magic-visual { height:min(52dvh,360px); }
   body.cinematic-mode .intro-teams { gap:10px; }
   body.cinematic-mode .intro-teams .team-card { padding:10px 9px; }
   body.cinematic-mode .intro-teams .team-art { height:min(18dvh,125px); margin:0 auto 4px; }

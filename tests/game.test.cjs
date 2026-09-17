@@ -189,10 +189,11 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   h.click('treasureFound');assert.equal(h.state().currentScreen,'returnMessage');
   assert.match(h.html(),/Zurück zum Zauberwald! ✨/);assert.match(h.html(),/Bringt die gesammelten Zauberkräfte mit/);assert.match(h.html(),/Wir sind zurück!/);
   assert.doesNotMatch(h.html(),/kleine Geburtstagsüberraschung|Überraschungen geöffnet|Nachricht zeigen|KEHRT ZURÜCK/);
-  assert.match(h.html(),/day-decor/);assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');assert.equal(h.timerCount(),0);
+  assert.match(h.html(),/storm-decor/);assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');assert.equal(h.timerCount(),0);
   h.click('sceneNext');assert.equal(h.state().currentScreen,'finale');assert.equal(h.state().returnInvited,true);
-  assert.match(h.html(),/Die Zauberkräfte sind zurück!/);assert.match(h.html(),/final-power-return/);
-  h.click('sceneNext');assert.match(h.html(),/Meine Magie ist wieder da!/);assert.match(h.html(),/final-magic-visual/);
+  assert.match(h.html(),/Die Zauberkräfte sind zurück!/);assert.match(h.html(),/final-power-return/);assert.match(h.html(),/storm-decor/);
+  h.click('sceneNext');assert.match(h.html(),/Die Magie kehrt zurück … ✨/);assert.match(h.html(),/forest-transformation-visual/);assert.match(h.html(),/forest-transform-decor/);assert.equal(h.timerCount(),0);
+  h.click('sceneNext');assert.match(h.html(),/Meine Magie ist wieder da!/);assert.match(h.html(),/final-magic-visual/);assert.match(h.html(),/day-decor/);
   h.click('sceneNext');
   assert.equal(h.state().currentScreen,'found');assert.match(h.html(),/Pssst … ich bin ganz in eurer Nähe/);assert.match(h.html(),/Ihr habt mich gefunden!/);
   assert.doesNotMatch(h.html(),/magic-unicorn|mascot unicorn/);
@@ -337,8 +338,9 @@ test('story narration and background music have central mappings',()=>{
   assert.equal(c.storyAudio.found,'Assets/Audio/story/final-03.mp3');assert.equal(c.storyAudio.rescued,'Assets/Audio/story/final-04.mp3');
   assert.deepEqual(Array.from(c.storyAudio.rewards),['Assets/Audio/story/treasure-01.mp3','Assets/Audio/story/treasure-02.mp3','Assets/Audio/story/treasure-03.mp3']);
   assert.deepEqual({...c.backgroundMusic},{ambient:'Assets/Audio/story/ambient.mp3',storm:'Assets/Audio/story/storm.mp3',final:'Assets/Audio/story/final.mp3'});
-  assert.equal(c.finale.length,2);assert.equal(c.finale[0].text,'Die Zauberkräfte sind zurück! ✨');assert.equal(c.finale[0].visual,'finalPowers');
-  assert.equal(c.finale[1].text,'Meine Magie ist wieder da! ✨');assert.equal(c.finale[1].visual,'finalMagic');
+  assert.equal(c.finale.length,3);assert.equal(c.finale[0].text,'Die Zauberkräfte sind zurück! ✨');assert.equal(c.finale[0].visual,'finalPowers');
+  assert.equal(c.finale[1].text,'Die Magie kehrt zurück … ✨');assert.equal(c.finale[1].visual,'forestTransform');assert.equal(c.finale[1].manual,true);assert.equal(c.finale[1].narration,false);
+  assert.equal(c.finale[2].text,'Meine Magie ist wieder da! ✨');assert.equal(c.finale[2].visual,'finalMagic');assert.equal(c.finale[2].audioIndex,1);
   assert.equal(c.found.title,'Pssst … ich bin ganz in eurer Nähe. 👀');assert.equal(c.rescued.title,'Ihr habt mich gefunden! 🦄✨');assert.equal(c.rescued.text,'Jetzt wird gefeiert!');
   for(const [from,to] of Object.entries(c.storyNext)) {
     assert.ok(Array.isArray(c[from]),from);assert.ok(c.screens[to],to);
@@ -414,6 +416,12 @@ test('automatic story navigation follows safe story scenes and stops at confirma
   reward.click('organizer');reward.change({dataset:{storyMode:'automatic'},checked:true});reward.click('close');
   reward.tick();reward.audio().emit('ended');
   assert.equal(reward.state().rewardIndex,0);assert.equal(reward.timerCount(),0);
+
+  const finaleState=finishState();finaleState.currentScreen='finale';
+  const finale=harness(JSON.stringify(finaleState));
+  finale.click('organizer');finale.change({dataset:{storyMode:'automatic'},checked:true});finale.click('close');
+  finale.audio().emit('ended');assert.equal(finale.timerCount(),1);finale.tick();
+  assert.match(finale.html(),/Die Magie kehrt zurück/);assert.equal(finale.context.StoryNarration.snapshot().status,'idle');assert.equal(finale.timerCount(),0,'forest transformation waits for its button');
 });
 test('one small narration button pauses and resumes the reusable narration player',()=>{
   const h=harness();fill(h);h.click('go',{screen:'intro'});
@@ -450,6 +458,7 @@ test('four final narration clips use finale, found and rescued states without ch
   h.click('go',{screen:'finale'});
   assert.equal(h.context.StoryNarration.snapshot().id,'finale:1');assert.match(h.audio().src,/final-01\.mp3$/);assert.equal(h.timerCount(),0);
   h.audio().emit('ended');assert.equal(h.context.StoryNarration.snapshot().id,'finale:1');assert.equal(h.timerCount(),0);
+  h.click('sceneNext');assert.equal(h.context.StoryNarration.snapshot().status,'idle');assert.match(h.html(),/Die Magie kehrt zurück/);assert.equal(h.timerCount(),0);
   h.click('sceneNext');assert.equal(h.context.StoryNarration.snapshot().id,'finale:2');assert.match(h.audio().src,/final-02\.mp3$/);assert.equal(h.timerCount(),0);
   h.click('sceneNext');assert.equal(h.state().currentScreen,'found');assert.equal(h.context.StoryNarration.snapshot().id,'found');assert.match(h.audio().src,/final-03\.mp3$/);assert.equal(h.timerCount(),0);
   h.audio().emit('ended');assert.equal(h.state().currentScreen,'found');assert.match(h.html(),/Ihr habt mich gefunden!/);
@@ -548,10 +557,13 @@ test('atmosphere follows storm and restored-magic story state',()=>{
 
   const returning=finishState();returning.returnInvited=false;returning.currentScreen='returnMessage';
   const returnPage=harness(JSON.stringify(returning));
-  assert.match(returnPage.html(),/day-decor/);assert.equal(returnPage.context.BackgroundMusic.snapshot().id,'storm');
+  assert.match(returnPage.html(),/storm-decor/);assert.equal(returnPage.context.BackgroundMusic.snapshot().id,'storm');
 
-  const restored=finishState();restored.currentScreen='finale';
-  assert.match(harness(JSON.stringify(restored)).html(),/day-decor/);
+  const finaleState=finishState();finaleState.currentScreen='finale';
+  const restored=harness(JSON.stringify(finaleState));
+  assert.match(restored.html(),/storm-decor/);assert.equal(restored.context.BackgroundMusic.snapshot().id,'final');
+  restored.click('sceneNext');assert.match(restored.html(),/forest-transform-decor/);assert.doesNotMatch(restored.html(),/storm-decor/);
+  restored.click('sceneNext');assert.match(restored.html(),/day-decor/);assert.doesNotMatch(restored.html(),/forest-transform-decor|storm-decor/);
 });
 test('final birthday image uses the transparent cutout and omits participant names',()=>{
   const s=finishState();s.rescued=true;s.currentScreen='done';
@@ -614,4 +626,12 @@ test('wide landscape story layout keeps visuals and actions in a two-column view
   assert.match(css,/body\.cinematic-mode \.story>[.]scene-visual \{ grid-column:1; grid-row:1\/6/);
   assert.match(css,/body\.cinematic-mode \.story>[.]actions \{ grid-column:2; grid-row:5/);
   assert.match(css,/@media\(max-width:700px\)/,'phone layout remains separately responsive');
+});
+
+test('forest restoration is a soft timed transition with a delayed manual button',()=>{
+  const css=fs.readFileSync(path.join(root,'styles.css'),'utf8');
+  assert.match(css,/\.forest-transform-decor::before[^}]+animation:transform-storm-clears 3\.4s/s);
+  assert.match(css,/\.story\.forestTransform \.actions[^}]+visibility:hidden[^}]+3\.25s/s);
+  assert.match(css,/@keyframes transform-storm-clears \{[\s\S]*?opacity:1;[\s\S]*?opacity:0;[\s\S]*?\}/);
+  assert.match(css,/@media\(prefers-reduced-motion:reduce\)[\s\S]+\.story\.forestTransform \.actions \{ opacity:1; visibility:visible; pointer-events:auto; \}/);
 });

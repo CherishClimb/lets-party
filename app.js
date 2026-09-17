@@ -162,10 +162,13 @@ function cancelTimer() { clearTimeout(timer); timer=null; }
 function currentNarration() {
   const screen=state.currentScreen,mapping=C.storyAudio?.[screen];
   if(!mapping) return null;
+  const sceneItem=Array.isArray(C[screen])?C[screen][scene]:null;
+  if(sceneItem?.narration===false) return null;
   const index=screen==='rewards'?state.rewardIndex:scene;
-  const src=Array.isArray(mapping)?mapping[index]:mapping;
+  const audioIndex=Number.isInteger(sceneItem?.audioIndex)?sceneItem.audioIndex:index;
+  const src=Array.isArray(mapping)?mapping[audioIndex]:mapping;
   if(!src) return null;
-  return {id:Array.isArray(mapping)?screen+':'+(index+1):screen,src};
+  return {id:Array.isArray(mapping)?screen+':'+(audioIndex+1):screen,src};
 }
 function narrationControls() {
   const n=C.narration;
@@ -220,17 +223,18 @@ function sceneFlags() {
   const missionStarted=state.introCompleted||C.teams.some(t=>state.teams[t.id].gesture!==null||state.teams[t.id].completedLevels.some(Boolean));
   const stormStarted=screen==='intro'?introStormVisuals.has(visual):missionStarted;
   const musicStorm=stormStarted&&!restored;
-  const sunnyReturn=screen==='returnMessage'&&G.eligible(state)&&state.treasureFound;
-  const storm=musicStorm&&!sunnyReturn;
-  const birthday=!storm&&(restored||birthdayScreens.has(screen)||['birthday','forestParty'].includes(visual));
+  const transforming=screen==='finale'&&visual==='forestTransform';
+  const awaitingTransformation=screen==='returnMessage'||(screen==='finale'&&visual==='finalPowers');
+  const storm=stormStarted&&(!restored||awaitingTransformation)&&!transforming;
+  const birthday=!storm&&!transforming&&(restored||birthdayScreens.has(screen)||['birthday','forestParty'].includes(visual));
   const butterflies=!storm&&(restored||screen==='home'||screen==='found'||screen==='rescued'||screen==='done'||['birthday','forestParty','happy'].includes(visual));
   const sparkles=!storm&&(restored||sparkleScreens.has(screen)||['magicPowers','magicTogether','restoredPowers','happy'].includes(visual));
-  return {storm,restored,musicStorm,birthday,butterflies,sparkles};
+  return {storm,restored,musicStorm,transforming,birthday,butterflies,sparkles};
 }
 function sceneDecor(flags=sceneFlags(),sunnyReturn=false) {
   const a=C.assets.magic;
   if(state.currentScreen==='done') return '';
-  return '<div class="ambient-decor '+(flags.storm?'storm-decor':'day-decor')+(sunnyReturn?' sunny-return-decor':'')+'" aria-hidden="true">'
+  return '<div class="ambient-decor '+(flags.storm?'storm-decor':'day-decor')+(flags.transforming?' forest-transform-decor':'')+(sunnyReturn?' sunny-return-decor':'')+'" aria-hidden="true">'
     +'<img class="decor-leaves" src="'+esc(a.leaves)+'" alt="">'
     +(flags.storm?'':'<img class="decor-flowers" src="'+esc(a.flowers)+'" alt="">')
     +(flags.butterflies?'<img class="decor-butterflies" src="'+esc(a.butterflies)+'" alt="">':'')
@@ -257,6 +261,7 @@ function chrome(flags=sceneFlags()) {
   document.body.classList.toggle('cinematic-mode',cinematicScreens.has(state.currentScreen));
   document.body.classList.toggle('scene-day',!flags.storm);
   document.body.classList.toggle('scene-storm',flags.storm);
+  document.body.classList.toggle('scene-transform',flags.transforming);
   if(state.currentScreen==='done') {
     document.querySelector('#header').innerHTML='<div class="final-controls">'+button('⚙','organizer','aria-label="'+esc(U.organizer)+'" title="'+esc(U.organizer)+'"','quiet')+musicButton()+button('⤢','presentation','aria-label="'+esc(presentation?U.exitPresentation:U.presentation)+'" title="'+esc(presentation?U.exitPresentation:U.presentation)+'"','quiet')+'</div>';
     document.querySelector('#footer').innerHTML='';
@@ -316,6 +321,7 @@ function award() {
 function visual(type) {
   if(type==='outsideTeams') return '<div class="outside-adventure" aria-hidden="true"><span class="outside-sun"></span><span class="outside-rainbow">⌒</span><span class="outside-path"></span>'+C.teams.map((t,i)=>mascot(t.id,'outside-team outside-team-'+(i+1))).join('')+'<span class="outside-spark outside-spark-one">✦</span><span class="outside-spark outside-spark-two">✧</span></div>';
   if(type==='finalPowers') return '<div class="final-power-return" aria-hidden="true">'+mascot('unicorn','final-power-unicorn')+'<div class="powers final-return-powers">'+powers(null,true)+'</div><span class="final-return-glow"></span></div>';
+  if(type==='forestTransform') return '<div class="forest-transformation-visual" aria-hidden="true"><span class="transform-day-forest"></span><span class="transform-storm-forest"></span><span class="transform-warmth"></span><img src="'+esc(C.assets.magic.flowers)+'" alt=""><span class="transform-spark transform-spark-one">✦</span><span class="transform-spark transform-spark-two">✧</span><span class="transform-spark transform-spark-three">✦</span></div>';
   if(type==='finalMagic') return '<div class="final-magic-visual" aria-hidden="true"><span class="final-magic-sparkle sparkle-one">✦</span><span class="final-magic-sparkle sparkle-two">✧</span><span class="final-magic-sparkle sparkle-three">✦</span><span class="final-magic-sparkle sparkle-four">✧</span>'+mascot('unicorn','final-magic-unicorn')+'</div>';
   if(type==='words') return '<div class="destination-parts">'+C.destinationWords.parts.map(w=>'<span>'+esc(w)+'</span>').join('<b>+</b>')+'</div>';
   if(type==='joined'||type==='courtyard') return '<div class="destination-joined">'+esc(C.destinationWords.joined)+(type==='courtyard'?'<strong>'+esc(C.destinationWords.final)+'</strong>':'')+'</div>';
@@ -405,7 +411,7 @@ function replayFinalCelebration() {
 function render() {
   cancelTimer();
   if(state.currentScreen!=='done') {clearTimeout(celebrationTimer);celebrationTimer=null;finalCelebrating=false;}
-  const flags=sceneFlags(), sunnyReturn=lastStorm===true&&!flags.storm;
+  const flags=sceneFlags(), sunnyReturn=lastStorm===true&&!flags.storm&&!flags.transforming;
   lastStorm=flags.storm;
   chrome(flags);
   const screen=state.currentScreen;

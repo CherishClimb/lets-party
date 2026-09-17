@@ -379,85 +379,47 @@ The organizer manually starts the finale after everyone is back home and the rea
 
 ## Finale Scene 1
 
-Text:
+The forest is still dark. Animate ⭐ Mut, 🌈 Zusammenhalt and 💎 Klugheit returning to the unicorn.
 
-**„Wir sind wieder im Zauberwald.“**
+Visible text:
 
-Then:
-
-**„Aber wo ist das Geburtstags-Einhorn?“**
+**„Die Zauberkräfte sind zurück! ✨“**
 
 ---
 
-## Finale Scene 2 — Return the magic
+## Transformation scene
 
-Show:
+Show the dark forest gradually becoming the bright, sunny Zauberwald. Warm light, colors, flowers and sparkles return without flashing.
 
-⭐  
-🌈  
-💎
+Visible text:
 
-Text:
+# **DIE MAGIE KEHRT ZURÜCK … ✨**
 
-**„Gebt dem Einhorn seine Magie zurück!“**
-
-Animate all three powers moving together.
+The organizer taps **„Weiter“** after the short transformation.
 
 ---
 
-## Finale Scene 3 — The unicorn returns
+## Finale Scene 2 — The unicorn's magic returns
 
-The unicorn appears happy and magical again.
+From this scene onward, the forest remains bright and sunny.
 
-Large text:
+Visible text:
 
-# **IHR HABT ES GESCHAFFT!**
+# **MEINE MAGIE IST WIEDER DA! ✨**
 
-Then:
-
-**„Mein Mut ist zurück.“** ⭐
-
-**„Unser Zusammenhalt ist zurück.“** 🌈
-
-**„Und meine Klugheit ist zurück.“** 💎
-
-Then:
-
-**„Jetzt kann der sechste Geburtstag doch noch weitergehen!“**
+The unicorn glows and magical sparkles appear.
 
 ---
 
-## Finale Scene 4 — Thank the teams
+## Find the unicorn
 
-Show each mascot/team.
+The unicorn itself is not visible yet.
 
-Text:
+Visible text:
 
-**„Danke, kleine Monster!“**
+# **PSST … ICH BIN GANZ IN EURER NÄHE. 👀**
 
-**„Danke, kleine Oktopusse!“**
-
-**„Danke, kleine Krokodile!“**
-
----
-
-## Finale Scene 5 — The final surprise
-
-Pause.
-
-Text:
-
-**„Aber wartet …“**
-
-Then:
-
-**„Ich bin ganz in eurer Nähe.“**
-
-Final large cue:
-
-# **FINDET MICH!**
-
-The children now search for and discover the **real unicorn balloon** at home.
+The children now search for and discover the **real unicorn balloon** at home. The organizer confirms with **„Ihr habt mich gefunden!“**
 
 ---
 

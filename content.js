@@ -481,8 +481,16 @@ window.CONTENT = {
       "text": "Die Zauberkräfte sind zurück! ✨"
     },
     {
+      "visual": "forestTransform",
+      "text": "Die Magie kehrt zurück … ✨",
+      "button": "Weiter",
+      "narration": false,
+      "manual": true
+    },
+    {
       "visual": "finalMagic",
-      "text": "Meine Magie ist wieder da! ✨"
+      "text": "Meine Magie ist wieder da! ✨",
+      "audioIndex": 1
     }
   ],
   "found": {
