@@ -629,6 +629,23 @@ test('music slider changes the already playing track immediately without restart
   h.inputVolume(0);assert.equal(h.music().volume,0);assert.equal(h.musicSetting(),'0');
   h.inputVolume(100);assert.equal(h.music().volume,1);assert.equal(h.musicSetting(),'1');
 });
+test('touch change events apply and save normalized volume, including zero after refresh',()=>{
+  const h=harness();h.click('organizer');const playing=h.music();playing.currentTime=11;
+  h.change({dataset:{musicVolume:''},value:'37'});
+  assert.equal(h.musicSetting(),'0.37');assert.equal(playing.volume,.37);assert.equal(playing.currentTime,11);
+  h.change({dataset:{musicVolume:''},value:'0'});assert.equal(h.musicSetting(),'0');assert.equal(playing.volume,0);
+  const reloaded=harness(h.serialized(),false,null,'ok',h.musicSetting());
+  assert.equal(reloaded.context.BackgroundMusic.snapshot().normalVolume,0);assert.equal(reloaded.music().volume,0);
+  reloaded.click('organizer');assert.match(reloaded.elements['#organizer'].innerHTML,/value="0" data-music-volume/);
+});
+test('malformed saved volume uses the default and malformed slider events do not overwrite it',()=>{
+  for(const value of ['',' ','bad','NaN','Infinity']) {
+    const h=harness(undefined,false,null,'ok',value);
+    assert.equal(h.context.BackgroundMusic.snapshot().normalVolume,.1);
+    h.inputVolume('bad');h.change({dataset:{musicVolume:''},value:'Infinity'});
+    assert.equal(h.context.BackgroundMusic.snapshot().normalVolume,.1);assert.equal(h.musicSetting(),value);
+  }
+});
 test('music toggle stays off across story phases and remains independent from narration',()=>{
   const h=harness();fill(h);h.click('go',{screen:'intro'});
   assert.match(h.elements['#header'].innerHTML,/data-action="musicToggle"/);

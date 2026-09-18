@@ -49,6 +49,17 @@ function heading(title, text='', eyebrow='') { return '<div class="page-heading"
 function note(text) { document.querySelector('#notice').textContent = text; }
 function save() { try { localStorage.setItem(STORAGE_KEY,JSON.stringify(state)); storageError=''; } catch { storageError=U.saveFailed; note(storageError); } }
 function saveMusicVolume(value) { try { localStorage.setItem(MUSIC_VOLUME_KEY,String(value)); } catch {} }
+function adjustMusicVolume(input) {
+  const percent=Number(input.value);
+  if(String(input.value).trim()===''||!Number.isFinite(percent)) return;
+  M?.unlock?.();
+  M?.setVolume?.(Math.max(0,Math.min(100,percent))/100);
+  const volume=M?.snapshot?.().normalVolume;
+  if(!Number.isFinite(volume)) return;
+  saveMusicVolume(volume);
+  const output=dialog.querySelector?.('[data-music-volume-output]');
+  if(output) output.textContent=Math.round(volume*100)+'%';
+}
 function saveMagicCode(value) {
   try { localStorage.setItem(MAGIC_CODE_KEY,value);magicCode=value;return true; }
   catch { note(U.saveFailed);return false; }
@@ -147,7 +158,7 @@ function setupOfflineSupport() {
   if(!('serviceWorker' in navigator)) return;
   navigator.serviceWorker.addEventListener?.('controllerchange',()=>{ready=true;showStatus();});
   window.addEventListener?.('load',()=>{
-    navigator.serviceWorker.register('./service-worker.js',{scope:'./'})
+    navigator.serviceWorker.register('./service-worker.js',{scope:'./',updateViaCache:'none'})
       .then(registration=>navigator.serviceWorker.ready.then(()=>registration))
       .then(registration=>{
         ready=true;showStatus();
@@ -159,8 +170,8 @@ function setupOfflineSupport() {
 }
 try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) state=G.normalize(JSON.parse(saved)); } catch { storageError=U.corruptSave; }
 try {
-  const rawVolume=localStorage.getItem(MUSIC_VOLUME_KEY),savedVolume=Number(rawVolume);
-  if(rawVolume!==null&&Number.isFinite(savedVolume)) M?.setVolume?.(savedVolume);
+  const rawVolume=localStorage.getItem(MUSIC_VOLUME_KEY);
+  if(rawVolume!==null) M?.setVolume?.(rawVolume);
 } catch {}
 try {
   const savedCode=localStorage.getItem(MAGIC_CODE_KEY);
@@ -516,7 +527,10 @@ function resume() {
     go(next===0?'level1':'transition'+(next+1));
   }
 }
+document.addEventListener('pointerdown',()=>M?.unlock?.());
+document.addEventListener('keydown',()=>M?.unlock?.());
 document.addEventListener('click', event=>{
+  M?.unlock?.();
   const el=event.target.closest('[data-action]');
   if(!el || el.disabled) return;
   if(el.dataset.action!=='musicToggle'&&M?.snapshot?.().status==='blocked') void M.play();
@@ -596,9 +610,7 @@ document.addEventListener('input',event=>{
     magicCodeDraft=String(el.value||'').replace(/\D/g,'').slice(0,4);el.value=magicCodeDraft;return;
   }
   if(el.dataset.musicVolume!==undefined) {
-    const volume=Math.max(0,Math.min(100,Number(el.value)))/100;
-    M?.setVolume?.(volume);saveMusicVolume(volume);
-    const output=dialog.querySelector?.('[data-music-volume-output]');if(output) output.textContent=Math.round(volume*100)+'%';
+    adjustMusicVolume(el);
     return;
   }
   if(el.dataset.field==='name') {state.children[Number(el.dataset.child)].name=el.value; save();}
@@ -612,6 +624,7 @@ document.addEventListener('submit',event=>{
 });
 document.addEventListener('change',event=>{
   const el=event.target;
+  if(el.dataset.musicVolume!==undefined) {adjustMusicVolume(el);return;}
   if(el.dataset.storyMode&&el.checked) {storyNavigation=el.dataset.storyMode==='automatic'?'automatic':'manual';cancelTimer();return;}
   if(el.dataset.photoInput!==undefined) {void processPhotoFiles(el.files);el.value='';return;}
   if(el.dataset.photoReplace!==undefined) {void processPhotoFiles(el.files,el.dataset.photoReplace);el.value='';return;}

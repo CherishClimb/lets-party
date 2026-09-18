@@ -23,6 +23,7 @@
     emit() { this.listener(this.snapshot()); }
     canPlay() { return true; }
     configure(audio) { audio.volume=1; }
+    preparePlayback() { return null; }
     open(id,src,options={}) {
       if(!this.audio||!id||!src) {this.stop();return;}
       const loop=options.loop===true;
@@ -82,6 +83,9 @@
       const active=()=>this.audio===audio && this.generation===generation && this.playRequest===request && this.wantsPlay;
       this.playPending=true;
       try {
+        const preparation=this.preparePlayback();
+        if(preparation) await preparation;
+        if(!active()) return false;
         // Reset after readiness, immediately before play, including cached/same-source visits.
         if(reset) audio.currentTime=0;
         this.needsReset=false;
@@ -129,32 +133,82 @@
     constructor() {
       super();
       this.enabled=true;this.ducked=false;this.normalVolume=.10;this.duckRatio=.6;this.fadeToken=0;
-      if(this.audio) this.configure(this.audio);
+      this.context=null;this.gain=null;this.source=null;this.outputVolume=this.normalVolume;
+      if(this.audio) this.audio.volume=this.normalVolume;
     }
-    snapshot() { return {...super.snapshot(),volume:this.audio?.volume??0,normalVolume:this.normalVolume,ducked:this.ducked,enabled:this.enabled}; }
+    snapshot() { return {...super.snapshot(),volume:this.outputVolume,normalVolume:this.normalVolume,ducked:this.ducked,enabled:this.enabled}; }
     canPlay() { return this.enabled; }
     targetVolume() { return this.ducked?this.normalVolume*this.duckRatio:this.normalVolume; }
-    configure(audio) { audio.volume=this.targetVolume(); }
+    ensureOutput() {
+      if(this.context) return this.context;
+      const AudioContext=root.AudioContext||root.webkitAudioContext;
+      if(!AudioContext) return null;
+      try {
+        const context=new AudioContext(),gain=context.createGain();
+        gain.gain.setValueAtTime(this.targetVolume(),context.currentTime);
+        gain.connect(context.destination);
+        this.context=context;this.gain=gain;
+      } catch { return null; }
+      return this.context;
+    }
+    configure(audio) {
+      const context=this.ensureOutput();
+      if(context) {
+        this.source=context.createMediaElementSource(audio);
+        this.source.connect(this.gain);
+        // Safari on iOS ignores media-element volume. Use one gain stage on all
+        // supported browsers, leaving the element at unity to avoid double attenuation.
+        audio.volume=1;
+      }
+      this.applyVolume(this.targetVolume());
+    }
+    applyVolume(volume) {
+      this.outputVolume=volume;
+      if(this.source) {
+        this.gain.gain.cancelScheduledValues(this.context.currentTime);
+        this.gain.gain.setValueAtTime(volume,this.context.currentTime);
+        this.audio.volume=1;
+      } else if(this.audio) this.audio.volume=volume;
+    }
+    unlock() {
+      // Call synchronously from a user gesture, including the access-code screen.
+      const context=this.ensureOutput();
+      if(context&&context.state!=='running') void context.resume().catch(()=>{});
+    }
+    preparePlayback() {
+      this.applyVolume(this.targetVolume());
+      if(!this.source||this.context.state==='running') return null;
+      const context=this.context;
+      this.status='blocked';this.emit();
+      return context.resume().then(()=>{
+        if(context.state!=='running') throw Object.assign(new Error('Audio context is suspended'),{name:'NotAllowedError'});
+      });
+    }
     open(id,src,options={}) { super.open(id,src,{...options,loop:options.loop!==false}); }
-    stop(notify=true) { this.fadeToken++;super.stop(notify); }
+    stop(notify=true) {
+      this.fadeToken++;super.stop(notify);
+      this.source?.disconnect();this.source=null;
+    }
     setVolume(volume) {
-      const next=Math.max(0,Math.min(1,Number(volume)));
-      if(!Number.isFinite(next)) return;
+      if((typeof volume!=='number'&&typeof volume!=='string')||String(volume).trim()==='') return;
+      const parsed=Number(volume);
+      if(!Number.isFinite(parsed)) return;
+      const next=Math.max(0,Math.min(1,parsed));
       this.normalVolume=next;this.fadeToken++;
-      if(this.audio) this.audio.volume=this.targetVolume();
+      this.applyVolume(this.targetVolume());
       this.emit();
     }
     fadeTo(target,duration) {
       const audio=this.audio;
       if(!audio) return;
-      const token=++this.fadeToken,start=audio.volume,raf=root.requestAnimationFrame?.bind(root);
-      if(!raf||duration<=0) {audio.volume=target;return;}
+      const token=++this.fadeToken,start=this.outputVolume,raf=root.requestAnimationFrame?.bind(root);
+      if(!raf||duration<=0) {this.applyVolume(target);return;}
       let started=null;
       const frame=time=>{
         if(token!==this.fadeToken||audio!==this.audio) return;
         if(started===null) started=time;
         const progress=Math.min(1,(time-started)/duration);
-        audio.volume=start+(target-start)*progress;
+        this.applyVolume(start+(target-start)*progress);
         if(progress<1) raf(frame);
       };
       raf(frame);
@@ -163,15 +217,15 @@
       this.enabled=!!enabled;
       if(!this.enabled) {this.fadeToken++;this.pause();}
       else void this.play();
-      if(this.audio) this.audio.volume=this.targetVolume();
+      this.applyVolume(this.targetVolume());
       this.emit();
     }
-    toggle() { this.setEnabled(!(this.enabled&&(this.wantsPlay||this.status==='playing'))); }
+    toggle() { this.setEnabled(!(this.enabled&&this.status!=='blocked'&&(this.wantsPlay||this.status==='playing'))); }
     setDucked(ducked) {
       if(this.ducked===!!ducked) return;
       this.ducked=!!ducked;
       if(this.status==='playing') this.fadeTo(this.targetVolume(),250);
-      else if(this.audio) this.audio.volume=this.targetVolume();
+      else this.applyVolume(this.targetVolume());
     }
   }
 

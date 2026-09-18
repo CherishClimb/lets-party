@@ -66,7 +66,7 @@ test('service worker refreshes audio online and falls back to the newest cached 
   const cacheApi=name=>({
     async addAll(urls) {
       const store=cacheStores.get(name);
-      for(const url of urls) store.set(normalize(url),new Response(diskBody(url),{status:200,headers:{'Content-Type':mime(url)}}));
+      for(const url of urls) store.set(normalize(url),await context.fetch(url));
     },
     async match(input) {return cacheStores.get(name).get(normalize(input))?.clone();},
     async put(input,response) {cacheStores.get(name).set(normalize(input),response.clone());}
@@ -92,10 +92,13 @@ test('service worker refreshes audio online and falls back to the newest cached 
 
   let pending;
   listeners.install({waitUntil(promise){pending=promise;}});await pending;
-  assert.equal(skipped,true);assert.equal(cacheStores.get('lets-party-v15').size,precacheUrls().length);
+  assert.equal(skipped,true);assert.equal(cacheStores.get('lets-party-v16').size,precacheUrls().length);
   const audioPrecache=networkRequests.filter(request=>request.url.endsWith('.mp3'));
   assert.equal(audioPrecache.length,precacheUrls().filter(url=>url.endsWith('.mp3')).length);
   assert.ok(audioPrecache.every(request=>request.cache==='no-store'));
+  const staticPrecache=networkRequests.filter(request=>!request.url.endsWith('.mp3'));
+  assert.ok(staticPrecache.length>0);
+  assert.ok(staticPrecache.every(request=>request.cache==='reload'),'new releases bypass stale HTTP-cached scripts');
   cacheStores.set('lets-party-v12',new Map());
   listeners.activate({waitUntil(promise){pending=promise;}});await pending;
   assert.equal(claimed,true);assert.equal(cacheStores.has('lets-party-v12'),false);
@@ -105,7 +108,7 @@ test('service worker refreshes audio online and falls back to the newest cached 
   networkOverrides.set(replacedUrl,Buffer.from('new narration with unchanged filename'));
   const refreshStart=networkRequests.length;
   listeners.message({data:{type:'REFRESH_AUDIO_CACHE'},waitUntil(promise){pending=promise;}});await pending;
-  assert.equal(await (await cacheApi('lets-party-v15').match(replacedUrl)).text(),'new narration with unchanged filename');
+  assert.equal(await (await cacheApi('lets-party-v16').match(replacedUrl)).text(),'new narration with unchanged filename');
   const refreshRequests=networkRequests.slice(refreshStart);
   assert.equal(refreshRequests.length,precacheUrls().filter(url=>url.endsWith('.mp3')).length);
   assert.ok(refreshRequests.every(request=>request.cache==='no-store'));

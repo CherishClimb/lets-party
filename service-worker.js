@@ -2,7 +2,7 @@
 'use strict';
 
 const APP_CACHE_PREFIX = 'lets-party-';
-const CACHE_NAME = 'lets-party-v15';
+const CACHE_NAME = 'lets-party-v16';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -58,7 +58,7 @@ const STATIC_URLS = PRECACHE_URLS.filter(url=>!url.toLowerCase().endsWith('.mp3'
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
     const cache=await caches.open(CACHE_NAME);
-    await cache.addAll(STATIC_URLS);
+    await cache.addAll(STATIC_URLS.map(url=>new Request(new URL(url,self.registration.scope),{cache:'reload',credentials:'same-origin'})));
     await Promise.all(AUDIO_URLS.map(async url=>{
       const response=await fetchFreshAudio(url);
       await cache.put(new URL(url,self.registration.scope).href,response);

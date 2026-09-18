@@ -6,14 +6,16 @@ const vm=require('node:vm');
 
 // Deliberately leave old events/promises queued when load() aborts a resource.
 // This exercises cancellation independently of the browser's own cleanup.
-function harness() {
-  const elements=[],log=[],frames=[];
+function harness({webAudio=false,ignoresVolume=false,suspended=false}={}) {
+  const elements=[],log=[],frames=[],contexts=[];
   class Audio {
     constructor() {
       this.id=elements.length;elements.push(this);this.handlers={};this.requests=[];
       this._src='';this._time=0;this.volume=1;this.paused=true;this.readyState=0;this.ended=false;
     }
     get src() {return this._src;}
+    get volume() {return ignoresVolume?1:this._volume;}
+    set volume(value) {this._volume=value;}
     set src(value) {this._src=value;log.push([this.id,'src',value]);}
     get currentTime() {return this._time;}
     set currentTime(value) {this._time=value;log.push([this.id,'time',value]);}
@@ -31,10 +33,28 @@ function harness() {
       return new Promise((resolve,reject)=>this.requests.push({resolve,reject}));
     }
   }
+  class AudioContext {
+    constructor() {this.state=suspended?'suspended':'running';this.currentTime=0;this.destination={};this.sources=[];this.resumes=[];contexts.push(this);}
+    createGain() {
+      const gain={value:1,cancelScheduledValues(){},setValueAtTime(value){this.value=value;}};
+      return {gain,connect:destination=>{this.connectedDestination=destination;}};
+    }
+    createMediaElementSource(audio) {
+      assert.ok(!this.sources.some(source=>source.audio===audio),'each element is routed once');
+      const source={audio,target:null,connect(target){this.target=target;},disconnect(){this.target=null;}};
+      this.sources.push(source);return source;
+    }
+    resume() {
+      if(this.state==='running') return Promise.resolve();
+      return new Promise(resolve=>this.resumes.push(resolve));
+    }
+    allowPlayback() {this.state='running';this.resumes.splice(0).forEach(resolve=>resolve());}
+  }
   const context={Audio,requestAnimationFrame:fn=>frames.push(fn)};
+  if(webAudio) context.AudioContext=AudioContext;
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'../narration.js'),'utf8'),context);
-  return {context,elements,log,frames};
+  return {context,elements,log,frames,contexts};
 }
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 const error=name=>Object.assign(new Error(name),{name});
@@ -119,4 +139,50 @@ test('music mute and volume survive scene changes; obsolete ducking frames canno
   music.setEnabled(false);second.ready();assert.equal(second.requests.length,0);
   music.open('a','a.mp3');music.audio.ready();assert.equal(music.audio.requests.length,0);assert.equal(music.snapshot().enabled,false);
   music.setEnabled(true);assert.equal(music.audio.currentTime,0);assert.equal(music.audio.volume,.4);assert.equal(music.audio.requests.length,1);
+});
+
+for(const ignoresVolume of [false,true]) {
+  test('Web Audio controls the active output even when element volume is '+(ignoresVolume?'ignored':'supported'),async()=>{
+    const h=harness({webAudio:true,ignoresVolume}),music=h.context.BackgroundMusic;
+    music.setVolume(.25);music.open('ambient','ambient.mp3');const first=music.audio;
+    assert.equal(first.volume,1,'gain is the only attenuation stage');
+    assert.equal(music.gain.gain.value,.25,'saved volume applies before loading/playing');
+    first.ready();first.requests[0].resolve();await flush();first.currentTime=17;
+    const source=music.source;
+    assert.equal(source.audio,first);assert.equal(source.target,music.gain);
+    music.setVolume(.75);assert.equal(music.gain.gain.value,.75);assert.equal(first.currentTime,17);assert.equal(first.requests.length,1);
+    music.setVolume(0);assert.equal(music.gain.gain.value,0);assert.equal(music.snapshot().normalVolume,0);
+    music.open('storm','storm.mp3');const second=music.audio;second.ready();
+    assert.equal(music.gain.gain.value,0);assert.equal(source.target,null);assert.equal(first.paused,true);assert.equal(music.source.audio,second);
+    music.setVolume(.4);assert.equal(music.gain.gain.value,.4);music.setDucked(true);
+    const fade=h.frames.shift();fade(0);const unfinishedFade=h.frames.shift();
+    music.setVolume(.5);unfinishedFade(250);assert.equal(music.gain.gain.value,.3,'a stale ducking fade cannot overwrite the slider');
+    music.setEnabled(false);music.setVolume(.8);assert.equal(music.enabled,false);assert.equal(second.paused,true);assert.equal(music.gain.gain.value,.48);
+    music.open('final','final.mp3');const last=music.audio;last.ready();assert.equal(last.requests.length,0);assert.equal(music.gain.gain.value,.48);
+    music.setEnabled(true);assert.equal(last.requests.length,1);assert.equal(last.currentTime,0);assert.equal(music.gain.gain.value,.48);
+    assert.equal(h.contexts.length,1);assert.equal(music.context.sources.filter(item=>item.target!==null).length,1);
+    assert.deepEqual(h.elements.filter(audio=>!audio.paused),[last]);
+    music.stop();assert.equal(music.context.sources.filter(item=>item.target!==null).length,0);
+  });
+}
+
+test('suspended Web Audio waits for a gesture and never starts obsolete scenes on resume',async()=>{
+  const h=harness({webAudio:true,suspended:true}),music=h.context.BackgroundMusic;
+  music.open('a','a.mp3');const first=music.audio;first.ready();assert.equal(first.requests.length,0);assert.equal(music.snapshot().status,'blocked');
+  music.open('b','b.mp3');const last=music.audio;last.ready();music.setVolume(.7);
+  music.unlock();music.context.allowPlayback();await flush();
+  assert.equal(first.requests.length,0);assert.equal(last.requests.length,1);assert.equal(music.gain.gain.value,.7);assert.equal(last.currentTime,0);
+  last.requests[0].resolve();await flush();
+  music.context.state='suspended';music.open('c','c.mp3');const muted=music.audio;muted.ready();music.setEnabled(false);
+  music.unlock();music.context.allowPlayback();await flush();assert.equal(muted.requests.length,0);assert.equal(music.enabled,false);
+});
+
+test('volume normalization preserves zero, clamps bounds and ignores malformed settings',()=>{
+  const h=harness(),music=h.context.BackgroundMusic;
+  music.setVolume('0');assert.equal(music.normalVolume,0);
+  music.setVolume('0.35');assert.equal(music.normalVolume,.35);
+  for(const value of ['', ' ', 'garbage', 'NaN', NaN, Infinity, -Infinity, 'Infinity', null, undefined, false, {}]) {
+    music.setVolume(value);assert.equal(music.normalVolume,.35);
+  }
+  music.setVolume(2);assert.equal(music.normalVolume,1);music.setVolume(-1);assert.equal(music.normalVolume,0);
 });
