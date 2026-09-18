@@ -1,36 +1,19 @@
-/* One reusable narration player for all story scenes. */
+/* Shared scene playback lifecycle; narration and background music keep independent controls. */
 (function (root) {
   'use strict';
 
-  class NarrationController {
+  class SceneAudioController {
     constructor() {
       this.audio=typeof root.Audio==='function'?new root.Audio():null;
       this.current={id:'',src:''};
       this.status='idle';
       this.listener=()=>{};
-      this.changing=false;
-      if(!this.audio) return;
-      this.audio.preload='auto';
-      this.audio.addEventListener('playing',()=>{
-        if(!this.current.id) return;
-        this.status='playing';this.emit();
-      });
-      this.audio.addEventListener('pause',()=>{
-        if(this.changing||!this.current.id||this.status==='ended') return;
-        this.status='paused';this.emit();
-      });
-      this.audio.addEventListener('ended',()=>{
-        if(!this.current.id) return;
-        this.status='ended';this.emit();
-      });
-      this.audio.addEventListener('canplay',()=>{
-        if(!this.current.id||this.status!=='loading') return;
-        this.status='paused';this.emit();
-      });
-      this.audio.addEventListener('error',()=>{
-        if(!this.current.id) return;
-        this.status='missing';this.emit();
-      });
+      this.generation=0;
+      this.playRequest=0;
+      this.handlers=[];
+      this.wantsPlay=false;
+      this.playPending=false;
+      this.needsReset=true;
     }
     subscribe(listener) {
       this.listener=typeof listener==='function'?listener:()=>{};
@@ -38,212 +21,160 @@
     }
     snapshot() { return {...this.current,status:this.status,supported:!!this.audio}; }
     emit() { this.listener(this.snapshot()); }
-    open(id,src) {
+    canPlay() { return true; }
+    configure(audio) { audio.volume=1; }
+    open(id,src,options={}) {
       if(!this.audio||!id||!src) {this.stop();return;}
-      if(this.current.id===id&&this.current.src===src) {this.emit();return;}
+      const loop=options.loop===true;
+      // UI rerenders do not restart playback; a new visit (even to the same URL) does.
+      if(options.sceneKey!==undefined && this.current.sceneKey===options.sceneKey && this.current.id===id && this.current.src===src && this.current.loop===loop) return;
       this.stop(false);
-      this.current={id,src};
-      this.status='loading';
-      this.audio.src=src;
-      this.audio.preload='auto';
-      this.audio.load();
+      // Retire the previous element before creating its replacement. Events from an old
+      // resource cannot be mistaken for events from a later visit to that same resource.
+      const audio=this.audio=new root.Audio(),generation=this.generation;
+      const active=()=>this.audio===audio && this.generation===generation && !!this.current.id;
+      this.current={id,src,loop,sceneKey:options.sceneKey};
+      this.status='loading';this.needsReset=true;this.wantsPlay=this.canPlay();
+      const listen=(type,handler)=>{
+        const guarded=()=>{if(active()) handler();};
+        audio.addEventListener(type,guarded);this.handlers.push([type,guarded]);
+      };
+      const ready=()=>{
+        if(!active() || audio.readyState<2 || this.status!=='loading') return;
+        this.status='paused';this.emit();
+        if(active()&&this.wantsPlay) void this.play();
+      };
+      listen('loadeddata',ready);
+      listen('canplay',ready);
+      listen('playing',()=>{
+        if(!this.wantsPlay||audio.paused) return;
+        this.status='playing';this.emit();
+      });
+      listen('pause',()=>{
+        if(!audio.paused||this.status!=='playing') return;
+        this.status='paused';this.emit();
+      });
+      listen('ended',()=>{
+        if(!audio.ended) return;
+        this.wantsPlay=false;this.playPending=false;this.playRequest++;
+        this.status='ended';this.emit();
+      });
+      listen('error',()=>{
+        this.wantsPlay=false;this.playPending=false;this.playRequest++;
+        audio.pause();this.status='missing';this.emit();
+      });
+      audio.preload='auto';audio.loop=loop;this.configure(audio);
+      audio.src=src;
       this.emit();
-      void this.play();
+      audio.load();
+      ready();
     }
     async play(restart=false) {
-      if(!this.audio||!this.current.id) return false;
-      const requestId=this.current.id;
-      if(restart||this.status==='ended') this.audio.currentTime=0;
+      const audio=this.audio;
+      if(!audio||!this.current.id||!this.canPlay()||this.status==='missing') return false;
+      if(restart||this.status==='ended') {
+        this.playRequest++;this.playPending=false;audio.pause();this.status='paused';this.needsReset=true;
+      }
+      this.wantsPlay=true;
+      if(audio.readyState<2) {this.status='loading';this.emit();return false;}
+      if(this.playPending||this.status==='playing') return true;
+      const generation=this.generation,request=++this.playRequest,reset=this.needsReset;
+      const active=()=>this.audio===audio && this.generation===generation && this.playRequest===request && this.wantsPlay;
+      this.playPending=true;
       try {
-        const result=this.audio.play();
-        if(result&&typeof result.then==='function') await result;
-        if(this.current.id!==requestId) return false;
-        if(this.current.id&&this.status!=='playing') {this.status='playing';this.emit();}
-        return true;
+        // Reset after readiness, immediately before play, including cached/same-source visits.
+        if(reset) audio.currentTime=0;
+        this.needsReset=false;
+        await audio.play();
+        if(!active()) {
+          if(this.audio!==audio||!this.wantsPlay) audio.pause();
+          return false;
+        }
+        this.playPending=false;
+        if(!audio.paused) {this.status='playing';this.emit();}
+        return !audio.paused;
       } catch(error) {
-        if(!this.current.id||this.current.id!==requestId) return false;
-        this.status=error?.name==='NotAllowedError'?'blocked':'missing';
-        this.emit();
-        return false;
+        if(!active()) return false;
+        this.playPending=false;this.wantsPlay=false;this.needsReset=reset;
+        this.status=error?.name==='NotAllowedError'?'blocked':error?.name==='AbortError'?'paused':'missing';
+        this.emit();return false;
       }
     }
     pause() {
-      if(!this.audio||this.status!=='playing') return;
-      this.audio.pause();
-      if(this.status==='playing') {this.status='paused';this.emit();}
+      this.wantsPlay=false;this.playPending=false;this.playRequest++;
+      this.audio?.pause();
+      this.status=this.current.id?'paused':'idle';this.emit();
     }
     toggle() {
-      if(this.status==='playing') this.pause();
+      if(this.wantsPlay) this.pause();
       else void this.play();
     }
     replay() { void this.play(true); }
     stop(notify=true) {
+      // Invalidate handlers and promises before pause/load can dispatch events.
+      this.generation++;this.playRequest++;this.wantsPlay=false;this.playPending=false;
       if(this.audio) {
-        this.changing=true;
+        for(const [type,handler] of this.handlers) this.audio.removeEventListener(type,handler);
         this.audio.pause();
         try {this.audio.currentTime=0;} catch {}
-        this.audio.removeAttribute?.('src');
+        this.audio.removeAttribute('src');
         this.audio.load();
-        this.changing=false;
       }
-      this.current={id:'',src:''};
-      this.status='idle';
+      this.handlers=[];this.current={id:'',src:''};this.status='idle';this.needsReset=true;
       if(notify) this.emit();
     }
   }
 
-  class MusicController {
+  class MusicController extends SceneAudioController {
     constructor() {
-      this.audio=typeof root.Audio==='function'?new root.Audio():null;
-      this.current={id:'',src:''};
-      this.pending=null;
-      this.status='idle';
-      this.enabled=true;
-      this.ducked=false;
-      this.normalVolume=.10;
-      this.duckRatio=.6;
-      this.fadeToken=0;
-      this.changing=false;
-      this.listener=()=>{};
-      if(!this.audio) return;
-      this.audio.preload='auto';
-      this.audio.loop=true;
-      this.audio.volume=this.normalVolume;
-      this.audio.addEventListener('playing',()=>{
-        if(!this.current.id) return;
-        this.status='playing';
-        this.emit();
-      });
-      this.audio.addEventListener('pause',()=>{
-        if(this.changing||!this.current.id) return;
-        this.status='paused';
-        this.emit();
-      });
-      this.audio.addEventListener('ended',()=>{
-        if(!this.current.id) return;
-        this.status='ended';
-        this.emit();
-      });
-      this.audio.addEventListener('canplay',()=>{
-        if(!this.current.id||this.status!=='loading') return;
-        this.status='paused';
-        this.emit();
-      });
-      this.audio.addEventListener('error',()=>{
-        if(!this.current.id) return;
-        this.status='missing';
-        this.emit();
-      });
+      super();
+      this.enabled=true;this.ducked=false;this.normalVolume=.10;this.duckRatio=.6;this.fadeToken=0;
+      if(this.audio) this.configure(this.audio);
     }
-    subscribe(listener) {
-      this.listener=typeof listener==='function'?listener:()=>{};
-      this.emit();
-    }
-    snapshot() { return {...this.current,status:this.status,supported:!!this.audio,volume:this.audio?.volume??0,normalVolume:this.normalVolume,ducked:this.ducked,enabled:this.enabled}; }
-    emit() { this.listener(this.snapshot()); }
+    snapshot() { return {...super.snapshot(),volume:this.audio?.volume??0,normalVolume:this.normalVolume,ducked:this.ducked,enabled:this.enabled}; }
+    canPlay() { return this.enabled; }
     targetVolume() { return this.ducked?this.normalVolume*this.duckRatio:this.normalVolume; }
+    configure(audio) { audio.volume=this.targetVolume(); }
+    open(id,src,options={}) { super.open(id,src,{...options,loop:options.loop!==false}); }
+    stop(notify=true) { this.fadeToken++;super.stop(notify); }
     setVolume(volume) {
       const next=Math.max(0,Math.min(1,Number(volume)));
       if(!Number.isFinite(next)) return;
-      this.normalVolume=next;
-      this.fadeToken++;
-      if(this.pending) this.activatePending(false);
-      else if(this.audio) this.audio.volume=this.targetVolume();
+      this.normalVolume=next;this.fadeToken++;
+      if(this.audio) this.audio.volume=this.targetVolume();
       this.emit();
     }
-    fadeTo(target,duration,onDone=()=>{}) {
-      if(!this.audio) return;
-      const token=++this.fadeToken,start=this.audio.volume,raf=root.requestAnimationFrame?.bind(root);
-      if(!raf||duration<=0) {this.audio.volume=target;onDone();return;}
+    fadeTo(target,duration) {
+      const audio=this.audio;
+      if(!audio) return;
+      const token=++this.fadeToken,start=audio.volume,raf=root.requestAnimationFrame?.bind(root);
+      if(!raf||duration<=0) {audio.volume=target;return;}
       let started=null;
       const frame=time=>{
-        if(token!==this.fadeToken) return;
+        if(token!==this.fadeToken||audio!==this.audio) return;
         if(started===null) started=time;
         const progress=Math.min(1,(time-started)/duration);
-        this.audio.volume=start+(target-start)*progress;
-        if(progress<1) raf(frame); else onDone();
+        audio.volume=start+(target-start)*progress;
+        if(progress<1) raf(frame);
       };
       raf(frame);
     }
-    open(id,src,options={}) {
-      if(!this.audio||!id||!src) return;
-      const loop=options.loop!==false;
-      if((this.current.id===id&&this.current.src===src&&this.current.loop===loop)||(this.pending?.id===id&&this.pending?.src===src&&this.pending?.loop===loop)) {
-        if(this.enabled&&this.status==='blocked') void this.play();
-        return;
-      }
-      this.pending={id,src,loop};
-      if(this.current.id&&this.status==='playing') this.fadeTo(0,350,()=>this.activatePending(true));
-      else {this.fadeToken++;this.activatePending(false);}
-    }
-    activatePending(fadeIn) {
-      const target=this.pending;
-      if(!this.audio||!target) return;
-      this.pending=null;
-      this.changing=true;
-      this.audio.pause();
-      try {this.audio.currentTime=0;} catch {}
-      this.current=target;
-      this.status='loading';
-      this.audio.src=target.src;
-      this.audio.preload='auto';
-      this.audio.loop=target.loop;
-      this.audio.volume=fadeIn?0:this.targetVolume();
-      this.audio.load();
-      this.changing=false;
-      this.emit();
-      if(this.enabled) void this.play(fadeIn);
-    }
-    async play(fadeIn=false) {
-      if(!this.enabled||!this.audio||!this.current.id||this.status==='missing') return false;
-      const requestId=this.current.id;
-      if(this.status==='ended') this.audio.currentTime=0;
-      try {
-        const result=this.audio.play();
-        if(result&&typeof result.then==='function') await result;
-        if(this.current.id!==requestId) return false;
-        this.status='playing';
-        if(fadeIn) this.fadeTo(this.targetVolume(),350);
-        else this.audio.volume=this.targetVolume();
-        this.emit();
-        return true;
-      } catch(error) {
-        if(this.current.id!==requestId) return false;
-        this.status=error?.name==='NotAllowedError'?'blocked':'missing';
-        this.emit();
-        return false;
-      }
-    }
     setEnabled(enabled) {
       this.enabled=!!enabled;
-      if(!this.audio) {this.emit();return;}
-      if(!this.enabled) {
-        this.fadeToken++;
-        this.changing=true;
-        this.audio.pause();
-        this.changing=false;
-        this.status=this.current.id?'paused':'idle';
-        this.audio.volume=this.targetVolume();
-        if(this.pending) this.activatePending(false);
-        this.emit();
-        return;
-      }
-      if(this.pending) this.activatePending(false);
+      if(!this.enabled) {this.fadeToken++;this.pause();}
       else void this.play();
+      if(this.audio) this.audio.volume=this.targetVolume();
       this.emit();
     }
-    toggle() {
-      this.setEnabled(!(this.enabled&&this.status==='playing'));
-    }
+    toggle() { this.setEnabled(!(this.enabled&&(this.wantsPlay||this.status==='playing'))); }
     setDucked(ducked) {
+      if(this.ducked===!!ducked) return;
       this.ducked=!!ducked;
-      if(!this.audio) return;
-      if(this.pending) return;
       if(this.status==='playing') this.fadeTo(this.targetVolume(),250);
-      else this.audio.volume=this.targetVolume();
+      else if(this.audio) this.audio.volume=this.targetVolume();
     }
   }
 
-  root.StoryNarration=new NarrationController();
+  root.StoryNarration=new SceneAudioController();
   root.BackgroundMusic=new MusicController();
 })(globalThis);

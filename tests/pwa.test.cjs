@@ -92,7 +92,7 @@ test('service worker refreshes audio online and falls back to the newest cached 
 
   let pending;
   listeners.install({waitUntil(promise){pending=promise;}});await pending;
-  assert.equal(skipped,true);assert.equal(cacheStores.get('lets-party-v13').size,precacheUrls().length);
+  assert.equal(skipped,true);assert.equal(cacheStores.get('lets-party-v15').size,precacheUrls().length);
   const audioPrecache=networkRequests.filter(request=>request.url.endsWith('.mp3'));
   assert.equal(audioPrecache.length,precacheUrls().filter(url=>url.endsWith('.mp3')).length);
   assert.ok(audioPrecache.every(request=>request.cache==='no-store'));
@@ -105,7 +105,7 @@ test('service worker refreshes audio online and falls back to the newest cached 
   networkOverrides.set(replacedUrl,Buffer.from('new narration with unchanged filename'));
   const refreshStart=networkRequests.length;
   listeners.message({data:{type:'REFRESH_AUDIO_CACHE'},waitUntil(promise){pending=promise;}});await pending;
-  assert.equal(await (await cacheApi('lets-party-v13').match(replacedUrl)).text(),'new narration with unchanged filename');
+  assert.equal(await (await cacheApi('lets-party-v15').match(replacedUrl)).text(),'new narration with unchanged filename');
   const refreshRequests=networkRequests.slice(refreshStart);
   assert.equal(refreshRequests.length,precacheUrls().filter(url=>url.endsWith('.mp3')).length);
   assert.ok(refreshRequests.every(request=>request.cache==='no-store'));

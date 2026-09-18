@@ -27,7 +27,9 @@ successful entry keeps the current browser tab unlocked until its session ends.
 1. Choose 6–15 child slots, fill the names, choose icons, and adjust teams. Empty places are fine.
 2. Reveal the teams and play the birthday intro (about 74 seconds of content,
    ending at the rescue invitation). The warm-up shows one team at a time. Each team
-   completes its three illustrated poses and marks each one **Fertig**.
+   tries its three illustrated poses, taps **Wir haben alle ausprobiert ✨**, then
+   chooses and confirms its official team pose. Activity progress and each team's
+   choice are saved; returning teams can change their pose.
 3. Run the first mat challenge with one more mat than children in each team. Every completed team gets a Mut reward moment.
    The last team's moment also celebrates MUT IST ZURÜCK.
 4. Show the storm transition and run the second challenge with one mat per child for Zusammenhalt.

@@ -9,7 +9,8 @@
     return {
       version:2,
       children:Array.from({length:maxChildren},(_,i)=>({id:'child-'+(i+1),name:'',icon:iconIds[i],teamId:teamIds[i%teamIds.length]})),
-      teams:Object.fromEntries(teamIds.map(id=>[id,{gesture:null,completedLevels:[false,false,false]}])),
+      teams:Object.fromEntries(teamIds.map(id=>[id,{gesture:null,posesTried:false,poseChoice:null,completedLevels:[false,false,false]}])),
+      warmupTeamId:teamIds[0],
       currentScreen:'home',introCompleted:false,outsideReady:false,clueRevealed:false,treasureFound:false,
       returnInvited:false,rescued:false,birthdayComplete:false,rewardIndex:0,award:null
     };
@@ -47,8 +48,11 @@
     teamIds.forEach(id=>{
       const t=input.teams?.[id];
       s.teams[id].gesture=Number.isInteger(t?.gesture) && t.gesture>=0 && t.gesture<3?t.gesture:null;
+      s.teams[id].posesTried=t?.posesTried===true || s.teams[id].gesture!==null;
+      s.teams[id].poseChoice=s.teams[id].posesTried && Number.isInteger(t?.poseChoice) && t.poseChoice>=0 && t.poseChoice<3?t.poseChoice:null;
       s.teams[id].completedLevels=[0,1,2].map(i=>t?.completedLevels?.[i]===true);
     });
+    s.warmupTeamId=teamIds.includes(input.warmupTeamId)?input.warmupTeamId:teamIds.find(id=>s.teams[id].gesture===null)||teamIds[teamIds.length-1];
     s.introCompleted=input.introCompleted===true;
     const beyondOutside=['level1','transition2','level2','transition3','level3','award','destination','pinata','treasure','returnMessage','waiting','finale','found','rescued','rewards','done'].includes(input.currentScreen)
       || teamIds.some(id=>s.teams[id].completedLevels.some(Boolean));

@@ -395,10 +395,8 @@ hr { border:0; border-top:1px solid var(--line); margin:20px 0; }
 .warmup-counter { margin:0; color:var(--muted); font-weight:750; }
 .pose-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:18px; }
 .pose-card { position:relative; min-width:0; padding:14px; border:2px solid transparent; border-radius:25px; background:#fffdf7; box-shadow:0 12px 30px #354a4012; text-align:center; transition:border-color .2s,transform .2s; }
-.pose-card.pose-complete { border-color:#6ea685; background:#f7fff8; }
-.pose-image-wrap { position:relative; overflow:hidden; border-radius:18px; background:#eef5f0; }
-.pose-image-wrap img { display:block; width:100%; aspect-ratio:3/4; object-fit:cover; }
-.pose-check { position:absolute; top:10px; right:10px; display:grid; place-items:center; width:38px; height:38px; border-radius:50%; background:#27634f; color:white; font-size:1.4rem; font-weight:900; box-shadow:0 3px 12px #183a2e42; }
+.pose-image-wrap { display:block; position:relative; overflow:hidden; border-radius:18px; background:#eef5f0; }
+.pose-image-wrap img { display:block; width:100%; aspect-ratio:3/4; object-fit:contain; }
 .pose-card h3 { margin:14px 4px 12px; font-size:clamp(1.05rem,1.7vw,1.35rem); }
 .pose-photo-button { display:block; margin:0; color:white; background:var(--green); font-size:1rem; text-align:center; }
 .team-spell-done { width:max-content; max-width:100%; margin:24px auto 4px; padding:13px 20px; border-radius:999px; background:#dff1df; color:#245a47; font-size:clamp(1.15rem,2vw,1.55rem); font-weight:850; animation:pop .45s both; }
@@ -508,12 +506,17 @@ main { max-width:1480px; padding:clamp(28px,4vw,58px); }
 .warmup-progress span.done { background:var(--team-accent); }
 .warmup-progress span.active { box-shadow:0 0 0 5px color-mix(in srgb,var(--team-accent) 25%,white); }
 .pose-card { border-color:#ffffffd6; background:#fffdf8ef; box-shadow:0 13px 32px #35564b14; }
-.pose-card.pose-complete { border-color:var(--team-accent); background:#fff; }
 .pose-image-wrap { box-shadow:inset 0 0 0 1px #ffffffc9; }
-.pose-finish { width:100%; min-height:52px; padding:13px 18px; border:0; border-radius:16px; color:#fff; background:var(--team-accent); font:800 1rem ui-rounded,"Trebuchet MS",sans-serif; box-shadow:0 6px 16px color-mix(in srgb,var(--team-accent) 25%,transparent); }
-.pose-finish.completed { color:#28604d; background:#def1e4; box-shadow:none; }
-.pose-finish.completed:disabled { opacity:1; }
-.pose-check { background:var(--team-accent); }
+.pose-option { color:var(--ink); }
+.pose-label,.pose-official figcaption { display:block; margin:14px 4px 8px; font-size:clamp(1.05rem,1.7vw,1.35rem); font-weight:750; }
+.pose-card.pose-selected,.pose-card.pose-official { border-color:#b18bdf; background:#fff8eb; box-shadow:0 0 0 4px #f8d98799,0 0 30px #c296e670,0 16px 32px #35564b18; }
+.pose-card.pose-selected,.pose-card.pose-selected:hover { transform:scale(1.035); z-index:1; }
+.pose-star { position:absolute; top:4px; right:4px; display:grid; place-items:center; width:48px; height:48px; border-radius:50%; background:#fff4c9; font-size:1.7rem; box-shadow:0 3px 14px #9d71b34d; }
+.pose-card.pose-official { width:100%; max-width:520px; margin:0 auto; }
+.pose-actions { margin-top:28px; }
+.pose-actions:empty { display:none; }
+.warmup-team-card .team-art { height:clamp(110px,12vw,150px); }
+@media(prefers-reduced-motion:reduce) { .pose-card { transition:none; } }
 .team-spell-done { background:#fff; color:var(--team-accent); border:2px solid color-mix(in srgb,var(--team-accent) 35%,white); }
 
 .story { position:relative; max-width:1180px; min-height:min(760px,calc(100svh - 205px)); padding:clamp(26px,4vw,56px); border-radius:44px; border:1px solid #fff; background:linear-gradient(155deg,#fffdf8e8,#eef8f3df); box-shadow:0 24px 65px #35564b18; overflow:hidden; }

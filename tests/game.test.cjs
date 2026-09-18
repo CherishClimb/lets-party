@@ -15,11 +15,12 @@ function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok', 
   if(accessUnlocked) session.set('unicorn-rescue-magic-unlocked-v1','yes');
   const audioInstances=[];
   class FakeAudio {
-    constructor(){this.src='';this.preload='';this.currentTime=0;this.volume=1;this.paused=true;this.mode=audioMode;this.playCalls=0;this.pauseCalls=0;this.handlers={};audioInstances.push(this);}
+    constructor(){this.src='';this.preload='';this.currentTime=0;this.volume=1;this.paused=true;this.readyState=0;this.ended=false;this.mode=audioMode;this.playCalls=0;this.pauseCalls=0;this.handlers={};audioInstances.push(this);}
     addEventListener(type,fn){(this.handlers[type]??=[]).push(fn);}
-    emit(type){for(const fn of this.handlers[type]||[]) fn();}
-    load(){if(!this.src)return;if(this.mode==='missing')this.emit('error');else this.emit('canplay');}
-    play(){this.playCalls++;if(this.mode==='blocked'){const error=Error('blocked');error.name='NotAllowedError';return Promise.reject(error);}if(this.mode==='missing'){const error=Error('missing');error.name='NotSupportedError';return Promise.reject(error);}this.paused=false;this.emit('playing');return Promise.resolve();}
+    removeEventListener(type,fn){this.handlers[type]=(this.handlers[type]||[]).filter(handler=>handler!==fn);}
+    emit(type){if(type==='ended'){this.ended=true;this.paused=true;}for(const fn of this.handlers[type]||[]) fn();}
+    load(){this.readyState=0;this.ended=false;if(!this.src)return;if(this.mode==='missing')this.emit('error');else {this.readyState=3;this.emit('canplay');}}
+    play(){this.playCalls++;if(this.mode==='blocked'){const error=Error('blocked');error.name='NotAllowedError';return Promise.reject(error);}if(this.mode==='missing'){const error=Error('missing');error.name='NotSupportedError';return Promise.reject(error);}this.ended=false;this.paused=false;this.emit('playing');return Promise.resolve();}
     pause(){this.pauseCalls++;if(!this.paused){this.paused=true;this.emit('pause');}}
     removeAttribute(name){if(name==='src')this.src='';}
   }
@@ -60,9 +61,9 @@ function harness(saved, storageThrows=false, photoRecords=null, audioMode='ok', 
     musicSetting:()=>storage.get('unicorn-rescue-music-volume-v1'),
     magicCodeSetting:()=>storage.get('unicorn-rescue-magic-code-v1'),
     sessionSetting:()=>session.get('unicorn-rescue-magic-unlocked-v1'),
-    audio:()=>audioInstances[0],
-    music:()=>audioInstances[1],
-    audioCount:()=>audioInstances.length,
+    audio:()=>context.StoryNarration.audio,
+    music:()=>context.BackgroundMusic.audio,
+    activeAudio:()=>audioInstances.filter(audio=>!audio.paused),
     narrationButton:()=>narrationButton,
     narrationControls:()=>narrationControls
   };
@@ -193,7 +194,9 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   assert.match(h.html(),/RETTEN WIR DAS EINHORN!/);assert.match(h.html(),/Emma/);
   h.click('sceneNext');
   G.teamIds.forEach((id,teamIndex)=>{
-    for(let pose=0;pose<3;pose++) h.click('poseDone',{team:id,pose:String(pose)});
+    h.click('posesTried');
+    h.click('gesture',{team:id,index:String(teamIndex)});
+    h.click('poseConfirm');
     if(teamIndex<2) h.click('warmupTeam',{index:String(teamIndex+1)});
   });
   assert.doesNotMatch(h.html(),/type="file"|capture=/);
@@ -245,7 +248,7 @@ test('full birthday adventure: powers, schoolyard treasure, return, balloon, sna
   assert.doesNotMatch(h.html(),/Gemeinsam seid ihr magisch/);
 });
 test('refresh restores names, gesture, team assignments, completion and current screen',()=>{
-  const h=harness();fill(h);h.click('gesture',{team:'monster',index:'2'});
+  const h=harness();fill(h);h.click('go',{screen:'warmup'});h.click('posesTried');h.click('gesture',{team:'monster',index:'2'});h.click('poseConfirm');
   h.click('go',{screen:'level1'});h.click('mark',{team:'monster',level:'0'});
   const loaded=harness(h.serialized());assert.match(loaded.html(),/MUT gefunden/);
   assert.equal(loaded.state().children[0].name,'Emma');
@@ -307,21 +310,71 @@ test('moving a child and choosing an icon persist independently of team completi
   assert.equal(loaded.state().children[0].icon,'moon');
   assert.equal(loaded.state().children.length,15);
 });
-test('warm-up shows one team with three fixed pose cards and keeps the saved-state shape',()=>{
+test('team pose requires trying, selecting and confirming before advancing',()=>{
   const h=harness();fill(h);h.click('go',{screen:'warmup'});
   assert.match(h.html(),/Monster-Krallen/);assert.match(h.html(),/Monster-Turm/);assert.match(h.html(),/Monster-Brüllen/);
   assert.doesNotMatch(h.html(),/8 Tentakel|Schnapp-Krokodil/);
   assert.doesNotMatch(h.html(),/type="file"|capture=/);
-  assert.match(h.html(),/0 \/ 3 Posen/);
-  for(let pose=0;pose<3;pose++) {
-    h.click('poseDone',{team:'monster',pose:String(pose)});
-    assert.equal((h.html().match(/class="pose-check"/g)||[]).length,pose+1);
-    assert.match(h.html(),new RegExp((pose+1)+' \\/ 3 Posen'));
-  }
-  assert.match(h.html(),/Team-Zauber geschafft!/);
-  const saved=h.state();assert.equal(saved.teams.monster.gesture,0);
-  assert.deepEqual(Object.keys(saved.teams.monster).sort(),['completedLevels','gesture']);
+  assert.match(h.html(),/Probiert eure 3 Team-Posen aus!/);
+  assert.match(h.html(),/Wir haben alle ausprobiert ✨/);
+  assert.doesNotMatch(h.html(),/data-action="gesture"|data-action="poseConfirm"|Nächstes Team|data-screen="outside"/);
+  h.click('gesture',{team:'monster',index:'2'});h.click('poseConfirm');h.click('warmupTeam',{index:'1'});
+  assert.equal(h.state().teams.monster.gesture,null);assert.equal(h.state().warmupTeamId,'monster');
+  h.click('posesTried');
+  assert.match(h.html(),/Welche Pose wird eure Team-Pose\?/);
+  assert.equal((h.html().match(/data-action="gesture"/g)||[]).length,3);
+  assert.doesNotMatch(h.html(),/data-action="poseConfirm"/);
+  const images=h.context.CONTENT.teams[0].poseImages;
+  for(const src of images) assert.ok(h.html().includes(src));
+  h.click('gesture',{team:'monster',index:'2'});
+  assert.match(h.html(),/pose-selected/);assert.match(h.html(),/aria-pressed="true"/);assert.match(h.html(),/Diese Pose wählen ⭐/);
+  assert.equal(h.state().teams.monster.gesture,null,'a draft does not complete the team');
+  assert.doesNotMatch(h.html(),/Nächstes Team|data-screen="outside"/);
+  for(const src of images) assert.ok(h.html().includes(src),'all three images remain during selection');
+  h.click('poseConfirm');
+  assert.equal(h.state().teams.monster.gesture,2);assert.match(h.html(),/Das ist eure Team-Pose!/);assert.match(h.html(),/pose-official/);
+  assert.ok(h.html().includes(images[2]));assert.ok(!h.html().includes(images[0]));assert.ok(!h.html().includes(images[1]));
+  assert.match(h.html(),/Nächstes Team/);assert.match(h.html(),/Pose ändern/);
   h.click('warmupTeam',{index:'1'});assert.match(h.html(),/8 Tentakel/);assert.doesNotMatch(h.html(),/Monster-Turm|Schnapp-Krokodil/);
+  assert.match(h.html(),/Probiert eure 3 Team-Posen aus!/);
+});
+
+test('team pose drafts, confirmations and active team survive reload, back navigation and reopening',()=>{
+  let h=harness();fill(h);h.click('go',{screen:'warmup'});h.click('posesTried');
+  h=harness(h.serialized());assert.match(h.html(),/Welche Pose wird eure Team-Pose\?/);
+  h.click('gesture',{team:'monster',index:'0'});
+  h=harness(h.serialized());assert.match(h.html(),/data-index="0"[^>]*aria-pressed="true"/);
+  h.click('poseConfirm');h.click('warmupTeam',{index:'1'});h.click('posesTried');h.click('gesture',{team:'octopus',index:'1'});h.click('poseConfirm');
+  h=harness(h.serialized());assert.match(h.html(),/Team 2 von 3/);assert.match(h.html(),/Das ist eure Team-Pose!/);
+  h.click('warmupTeam',{index:'0'});assert.match(h.html(),/Das ist eure Team-Pose!/);
+  h.click('poseChange');assert.match(h.html(),/data-index="0"[^>]*aria-pressed="true"/);
+  h.click('gesture',{team:'monster',index:'2'});
+  assert.equal(h.state().teams.monster.gesture,0,'keep the official pose until the replacement is confirmed');
+  h=harness(h.serialized());assert.match(h.html(),/data-index="2"[^>]*aria-pressed="true"/);h.click('poseConfirm');
+  h.click('go',{screen:'home'});h=harness(h.serialized());h.click('go',{screen:'warmup'});
+  assert.match(h.html(),/Das ist eure Team-Pose!/);assert.equal(h.state().teams.monster.gesture,2);assert.equal(h.state().teams.octopus.gesture,1);
+  h.click('warmupTeam',{index:'1'});h.click('warmupTeam',{index:'2'});h.click('posesTried');h.click('gesture',{team:'crocodile',index:'0'});h.click('poseConfirm');
+  assert.match(h.html(),/data-screen="outside"/);
+  h.click('go',{screen:'outside'});h.click('go',{screen:'warmup'});assert.match(h.html(),/Team 3 von 3/);assert.match(h.html(),/Das ist eure Team-Pose!/);
+  assert.deepEqual(G.teamIds.map(id=>h.state().teams[id].gesture),[2,1,0]);
+  h.click('resetConfirm');fill(h);h.click('go',{screen:'warmup'});
+  assert.match(h.html(),/Probiert eure 3 Team-Posen aus!/);assert.equal(h.state().teams.monster.gesture,null);
+});
+
+test('old saved poses remain editable and invalid pose progress is normalized safely',()=>{
+  const saved=G.fresh();saved.children[0].name='Emma';saved.currentScreen='warmup';delete saved.warmupTeamId;
+  saved.teams.monster={gesture:2,completedLevels:[false,false,false]};
+  saved.teams.octopus={gesture:1,completedLevels:[false,false,false]};
+  saved.teams.crocodile={gesture:0,completedLevels:[false,false,false]};
+  const h=harness(JSON.stringify(saved));assert.match(h.html(),/Das ist eure Team-Pose!/);assert.match(h.html(),/Team 3 von 3/);
+  h.click('poseChange');assert.match(h.html(),/data-index="0"[^>]*aria-pressed="true"/);
+  saved.warmupTeamId='missing';saved.teams.monster={gesture:9,posesTried:'true',poseChoice:2};saved.teams.octopus.poseChoice=8;
+  const normalized=G.normalize(saved);
+  assert.equal(normalized.warmupTeamId,'monster');assert.equal(normalized.teams.monster.gesture,null);assert.equal(normalized.teams.monster.posesTried,false);assert.equal(normalized.teams.monster.poseChoice,null);assert.equal(normalized.teams.octopus.poseChoice,null);
+  const fresh=harness();fill(fresh);fresh.click('go',{screen:'warmup'});fresh.click('posesTried');
+  for(const index of ['-1','3','NaN','1.5']) fresh.click('gesture',{team:'monster',index});
+  fresh.click('gesture',{team:'octopus',index:'1'});
+  assert.equal(fresh.state().teams.monster.poseChoice,null);assert.equal(fresh.state().teams.octopus.poseChoice,null);
 });
 
 test('Klugheit is awarded at the combined clue reveal, not when individual words are marked',()=>{
@@ -458,19 +511,19 @@ test('automatic story navigation follows safe story scenes and stops at confirma
   finale.audio().emit('ended');assert.equal(finale.timerCount(),1);finale.tick();
   assert.match(finale.html(),/Die Magie kehrt zurück/);assert.equal(finale.context.StoryNarration.snapshot().status,'idle');assert.equal(finale.timerCount(),0,'forest transformation waits for its button');
 });
-test('one small narration button pauses and resumes the reusable narration player',()=>{
+test('one small narration button pauses and resumes the current narration player',()=>{
   const h=harness();fill(h);h.click('go',{screen:'intro'});
   assert.equal(h.context.StoryNarration.snapshot().id,'intro:1');
   assert.equal(h.context.StoryNarration.snapshot().status,'playing');
-  assert.match(h.audio().src,/scene-01\.mp3$/);assert.equal(h.timerCount(),0);assert.equal(h.audioCount(),2);
+  assert.match(h.audio().src,/scene-01\.mp3$/);assert.equal(h.timerCount(),0);assert.equal(h.activeAudio().length,2);
   assert.equal((h.html().match(/data-action="narrationToggle"/g)||[]).length,1);
   assert.doesNotMatch(h.html(),/Nochmal h|Geschichte starten|narration-replay|narration-start/);
   assert.equal(h.narrationButton().textContent,'⏸');assert.equal(h.narrationControls().hidden,false);
   h.audio().currentTime=4;h.click('narrationToggle');assert.equal(h.context.StoryNarration.snapshot().status,'paused');assert.equal(h.audio().currentTime,4);
   assert.equal(h.narrationButton().textContent,'▶');
   h.click('narrationToggle');assert.equal(h.context.StoryNarration.snapshot().status,'playing');assert.equal(h.narrationButton().textContent,'⏸');
-  const pauses=h.audio().pauseCalls;h.click('sceneNext');
-  assert.equal(h.context.StoryNarration.snapshot().id,'intro:2');assert.match(h.audio().src,/scene-02\.mp3$/);assert.ok(h.audio().pauseCalls>pauses);
+  const previous=h.audio(),pauses=previous.pauseCalls;h.click('sceneNext');
+  assert.equal(h.context.StoryNarration.snapshot().id,'intro:2');assert.match(h.audio().src,/scene-02\.mp3$/);assert.ok(previous.pauseCalls>pauses);assert.equal(previous.paused,true);
   h.audio().emit('ended');assert.equal(h.context.StoryNarration.snapshot().status,'ended');assert.equal(h.timerCount(),0);assert.equal(h.narrationControls().hidden,true);
   assert.equal(h.context.StoryNarration.snapshot().id,'intro:2');
   h.click('skip');assert.equal(h.context.StoryNarration.snapshot().status,'idle');assert.equal(h.audio().src,'');
@@ -481,6 +534,39 @@ test('blocked autoplay can be unlocked without changing the scene',async()=>{
   assert.equal(h.context.StoryNarration.snapshot().status,'blocked');assert.equal(h.context.StoryNarration.snapshot().id,'intro:1');
   h.audio().mode='ok';h.music().mode='ok';h.click('narrationToggle');await new Promise(resolve=>setImmediate(resolve));
   assert.equal(h.context.StoryNarration.snapshot().status,'playing');assert.equal(h.context.StoryNarration.snapshot().id,'intro:1');assert.equal(h.context.BackgroundMusic.snapshot().status,'playing');
+});
+test('next, back, same-page revisits and rapid navigation restart both scene tracks at zero',async()=>{
+  const h=harness();fill(h);h.click('go',{screen:'intro'});
+  const transitions=[['sceneNext',{},'intro:2'],['sceneNext',{},'intro:3'],['sceneBack',{},'intro:2'],['go',{screen:'intro'},'intro:1'],['go',{screen:'intro'},'intro:1']];
+  for(const [action,data,id] of transitions) {
+    const oldNarration=h.audio(),oldMusic=h.music();oldNarration.currentTime=13;oldMusic.currentTime=24;
+    h.click(action,data);
+    assert.equal(h.context.StoryNarration.snapshot().id,id);
+    for(const previous of [oldNarration,oldMusic]) {assert.equal(previous.paused,true);assert.equal(previous.currentTime,0);assert.equal(previous.src,'');}
+    assert.equal(h.audio().currentTime,0);assert.equal(h.music().currentTime,0);
+    assert.deepEqual(h.activeAudio(),[h.audio(),h.music()]);
+  }
+  for(let i=0;i<5;i++) h.click('sceneNext');
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.context.StoryNarration.snapshot().id,'intro:6');assert.match(h.audio().src,/scene-06\.mp3$/);
+  assert.equal(h.context.BackgroundMusic.snapshot().id,'storm');
+  assert.equal(h.audio().currentTime,0);assert.equal(h.music().currentTime,0);assert.deepEqual(h.activeAudio(),[h.audio(),h.music()]);
+});
+test('silent narration scenes and absent music stop playback; returning and refresh start at zero',()=>{
+  const saved=finishState();saved.currentScreen='finale';
+  let h=harness(JSON.stringify(saved),false,null,'ok',.25);
+  const first=h.audio();first.currentTime=16;h.music().currentTime=27;
+  h.click('sceneNext');assert.equal(h.context.StoryNarration.snapshot().status,'idle');assert.equal(first.paused,true);assert.equal(first.currentTime,0);
+  assert.equal(h.music().currentTime,0);assert.equal(h.activeAudio().length,1);
+  h.click('sceneBack');assert.match(h.audio().src,/final-01\.mp3$/);assert.equal(h.audio().currentTime,0);
+  const musicSrc=h.context.CONTENT.backgroundMusic.final,oldMusic=h.music();oldMusic.currentTime=12;
+  h.context.CONTENT.backgroundMusic.final='';h.click('sceneNext');
+  assert.equal(h.context.BackgroundMusic.snapshot().status,'idle');assert.equal(oldMusic.paused,true);assert.equal(h.activeAudio().length,0);
+  h.context.CONTENT.backgroundMusic.final=musicSrc;h.click('sceneBack');assert.equal(h.music().currentTime,0);assert.equal(h.audio().currentTime,0);
+  h.audio().currentTime=21;h.music().currentTime=32;
+  h=harness(h.serialized(),false,null,'ok',.25);assert.match(h.audio().src,/final-01\.mp3$/);assert.equal(h.audio().currentTime,0);assert.equal(h.music().currentTime,0);
+  h.click('go',{screen:'home'});h=harness(h.serialized(),false,null,'ok',.25);h.click('resume');
+  assert.equal(h.state().currentScreen,'finale');assert.match(h.audio().src,/final-01\.mp3$/);assert.equal(h.audio().currentTime,0);assert.equal(h.music().currentTime,0);assert.equal(h.context.BackgroundMusic.snapshot().normalVolume,.25);
 });
 test('missing narration stays hidden and never blocks story navigation',async()=>{
   const h=harness(undefined,false,null,'missing');fill(h);h.click('go',{screen:'intro'});
@@ -586,7 +672,7 @@ test('music toggle stays off across story phases and remains independent from na
 test('last page replaces final music with the non-looping celebration song',()=>{
   const s=finishState();s.rescued=true;s.birthdayComplete=true;s.currentScreen='done';
   const h=harness(JSON.stringify(s));
-  assert.equal(h.audioCount(),2);assert.equal(h.context.StoryNarration.snapshot().status,'idle');
+  assert.equal(h.activeAudio().length,1);assert.equal(h.context.StoryNarration.snapshot().status,'idle');
   assert.equal(h.context.BackgroundMusic.snapshot().id,'celebration');assert.match(h.music().src,/einhorn-party-song\.mp3$/);
   assert.equal(h.context.BackgroundMusic.snapshot().status,'playing');assert.equal(h.music().loop,false);assert.equal(h.music().volume,.10);
   assert.doesNotMatch(h.music().src,/\/final\.mp3$/);

@@ -7,8 +7,8 @@ const STORAGE_KEY = 'unicorn-rescue-v1';
 const MUSIC_VOLUME_KEY = 'unicorn-rescue-music-volume-v1';
 const MAGIC_CODE_KEY = 'unicorn-rescue-magic-code-v1';
 const MAGIC_UNLOCK_KEY = 'unicorn-rescue-magic-unlocked-v1';
+let audioVisit=0,lastAudioSceneKey='';
 let state = G.fresh(), storageError = '', presentation = false, storyNavigation = 'manual', scene = 0, timer = null, celebrationTimer = null, finalCelebrating = false, returnScreen = 'home', rewardShown = false, lastAward = null, warmupTeam = 0, lastStorm = null, memoryPhotos = [], photosReady = false, magicCode = C.access.defaultCode, magicCodeDraft = '', accessUnlocked = false;
-const warmupPoses = Object.fromEntries(C.teams.map(t=>[t.id,[false,false,false]]));
 const sequence = ['home','setup','reveal','intro','warmup','outside','level1','transition2','level2','transition3','level3','destination','pinata','returnMessage','finale','found','rescued','rewards','done'];
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const fmt = (text, args) => text.replace(/\{(\w+)\}/g, (_,key) => args[key] ?? '');
@@ -167,7 +167,7 @@ try {
   if(/^\d{4}$/.test(savedCode||'')) magicCode=savedCode;
   accessUnlocked=sessionStorage.getItem(MAGIC_UNLOCK_KEY)==='yes';
 } catch {}
-C.teams.forEach(t=>{ if(state.teams[t.id].gesture!==null) warmupPoses[t.id].fill(true); });
+warmupTeam=Math.max(0,C.teams.findIndex(t=>t.id===state.warmupTeamId));
 document.title = C.app.title;
 function cancelTimer() { clearTimeout(timer); timer=null; }
 function currentNarration() {
@@ -214,19 +214,29 @@ function updateNarrationUi(snapshot=N?.snapshot?.()) {
   toggle.setAttribute('aria-label',label);
   toggle.setAttribute('title',label);
 }
-function syncNarration() {
+function syncNarration(sceneKey) {
   const target=currentNarration();
   if(!target) {N?.stop?.();return;}
-  N?.open?.(target.id,target.src);
+  N?.open?.(target.id,target.src,{sceneKey});
   updateNarrationUi();
 }
-function syncBackgroundMusic(flags=sceneFlags()) {
+function syncBackgroundMusic(flags,sceneKey) {
   if(state.currentScreen==='done'&&C.celebrationMusic) {
-    M?.open?.('celebration',C.celebrationMusic,{loop:false});
+    M?.open?.('celebration',C.celebrationMusic,{loop:false,sceneKey});
     return;
   }
   const id=flags.restored?'final':flags.musicStorm?'storm':'ambient',src=C.backgroundMusic?.[id];
-  if(src) M?.open?.(id,src,{loop:true});
+  if(src) M?.open?.(id,src,{loop:true,sceneKey});
+  else M?.stop?.();
+}
+function syncSceneAudio(flags) {
+  const sceneKey=JSON.stringify([audioVisit,state.currentScreen,scene,state.rewardIndex,warmupTeam,state.award]);
+  if(sceneKey!==lastAudioSceneKey) {
+    lastAudioSceneKey=sceneKey;
+    N?.stop?.();M?.stop?.();
+  }
+  syncNarration(sceneKey);
+  syncBackgroundMusic(flags,sceneKey);
 }
 function activeVisual() {
   const scenes=C[state.currentScreen];
@@ -261,11 +271,7 @@ function go(screen) {
   if (!G.canVisit(state,screen)) { note(U.locked); return; }
   if (['reveal','intro','warmup','outside','level1'].includes(screen) && !activeChildren().some(c=>c.name.trim())) { note(U.childRequired); screen='setup'; }
   if (screen==='progress' && state.currentScreen!=='progress') returnScreen=state.currentScreen;
-  cancelTimer(); scene=0; rewardShown=false;
-  if(screen==='warmup') {
-    const firstOpen=C.teams.findIndex(t=>state.teams[t.id].gesture===null);
-    warmupTeam=firstOpen<0?C.teams.length-1:firstOpen;
-  }
+  cancelTimer(); scene=0; rewardShown=false; audioVisit++;
   state.currentScreen=screen; save();
   if (dialog.open) dialog.close();
   render(); app.focus({preventScroll:true}); window.scrollTo({top:0,behavior:'instant'});
@@ -328,11 +334,25 @@ function reveal() {
   return heading(C.reveal.title,C.reveal.text)+'<div class="team-grid reveal">'+C.teams.map(t=>teamCard(t,roster(t))).join('')+'</div><div class="actions">'+nav(U.next,'intro')+'</div>';
 }
 function warmup() {
-  const t=C.teams[warmupTeam]||C.teams[0], checks=warmupPoses[t.id], teamDone=checks.every(Boolean), doneCount=checks.filter(Boolean).length;
-  const teamHeader=teamCard(t,'<p class="warmup-counter">'+esc(fmt(U.teamOf,{n:warmupTeam+1}))+' · '+esc(fmt(U.poseProgress,{n:doneCount}))+'</p>','warmup-team-card');
-  const poses=t.gestures.map((label,i)=>'<article class="pose-card '+(checks[i]?'pose-complete':'')+'"><div class="pose-image-wrap"><img src="'+esc(t.poseImages[i])+'" alt="'+esc(label)+'" loading="eager">'+(checks[i]?'<span class="pose-check" aria-label="'+esc(U.completed)+'">✓</span>':'')+'</div><h3>'+esc(label)+'</h3>'+button(checks[i]?U.finished:U.finishPose,'poseDone','data-team="'+t.id+'" data-pose="'+i+'" aria-pressed="'+checks[i]+'"'+(checks[i]?' disabled':''),checks[i]?'pose-finish completed':'pose-finish')+'</article>').join('');
+  const t=C.teams[warmupTeam]||C.teams[0], progress=state.teams[t.id], copy=C.warmup;
+  const confirmed=progress.gesture!==null && progress.poseChoice===null;
+  const selecting=progress.posesTried && !confirmed;
+  const teamHeader=teamCard(t,'<p class="warmup-counter">'+esc(fmt(U.teamOf,{n:warmupTeam+1}))+'</p>','warmup-team-card');
+  const poseImage=i=>'<span class="pose-image-wrap"><img src="'+esc(t.poseImages[i])+'" alt="'+esc(t.gestures[i])+'" loading="eager"></span>';
+  const poses=confirmed?'<figure class="pose-card pose-official">'+poseImage(progress.gesture)+'<figcaption>'+esc(t.gestures[progress.gesture])+'</figcaption><span class="pose-star" aria-hidden="true">⭐</span></figure>':'<div class="pose-grid">'+t.gestures.map((label,i)=>{
+    const selected=progress.poseChoice===i;
+    if(!selecting) return '<article class="pose-card">'+poseImage(i)+'<h3>'+esc(label)+'</h3></article>';
+    return '<button class="pose-card pose-option'+(selected?' pose-selected':'')+'" data-action="gesture" data-team="'+t.id+'" data-index="'+i+'" aria-label="'+esc(label)+'" aria-pressed="'+selected+'">'+poseImage(i)+'<span class="pose-label">'+esc(label)+'</span>'+(selected?'<span class="pose-star" aria-label="'+esc(copy.selected)+'">⭐</span>':'')+'</button>';
+  }).join('')+'</div>';
   const allDone=C.teams.every(team=>state.teams[team.id].gesture!==null);
-  return '<section class="warmup-session '+t.id+'">'+heading(C.warmup.title,C.warmup.text)+'<div class="warmup-progress" aria-label="'+esc(U.warmupProgress)+'">'+C.teams.map((team,i)=>'<span class="'+(state.teams[team.id].gesture!==null?'done':'')+(i===warmupTeam?' active':'')+'" aria-hidden="true"></span>').join('')+'</div>'+teamHeader+'<div class="pose-grid">'+poses+'</div>'+(teamDone?'<p class="team-spell-done">✓ '+esc(U.teamSpellDone)+'</p>':'')+'<p class="helper">'+esc(U.poseHint)+'</p><div class="actions">'+(warmupTeam>0?button(U.previousTeam,'warmupTeam','data-index="'+(warmupTeam-1)+'"','secondary'):'')+(teamDone&&warmupTeam<2?button(U.nextTeam,'warmupTeam','data-index="'+(warmupTeam+1)+'"'):'')+(allDone?nav(U.next,'outside'):'')+'</div></section>';
+  const activityAction=!progress.posesTried?button(copy.tried,'posesTried'):selecting&&progress.poseChoice!==null?button(copy.confirm,'poseConfirm'):confirmed?button(copy.change,'poseChange','','secondary'):'';
+  return '<section class="warmup-session '+t.id+'">'+heading(confirmed?copy.confirmed:selecting?copy.choose:copy.title,progress.posesTried?'':copy.text)+'<div class="warmup-progress" aria-label="'+esc(U.warmupProgress)+'">'+C.teams.map((team,i)=>'<span class="'+(state.teams[team.id].gesture!==null?'done':'')+(i===warmupTeam?' active':'')+'" aria-hidden="true"></span>').join('')+'</div>'+teamHeader+poses+'<div class="actions pose-actions">'+activityAction+'</div><div class="actions">'+(warmupTeam>0?button(U.previousTeam,'warmupTeam','data-index="'+(warmupTeam-1)+'"','secondary'):'')+(confirmed&&warmupTeam<C.teams.length-1?button(U.nextTeam,'warmupTeam','data-index="'+(warmupTeam+1)+'"'):'')+(confirmed&&allDone?nav(U.next,'outside'):'')+'</div></section>';
+}
+function updateWarmup(scroll=true) {
+  state.warmupTeamId=C.teams[warmupTeam].id;
+  save();render();
+  app.focus({preventScroll:true});
+  if(scroll) window.scrollTo({top:0,behavior:'instant'});
 }
 function level(index) {
   const l=C.levels[index];
@@ -456,8 +476,7 @@ function render() {
   const views={home,setup,reveal,warmup,progress,award,pinata,found,rescued,rewards,done};
   const view=views[screen]?views[screen]():/^level/.test(screen)?level(Number(screen.slice(-1))-1):story(screen);
   app.innerHTML=sceneDecor(flags,sunnyReturn)+view;
-  syncNarration();
-  syncBackgroundMusic(flags);
+  syncSceneAudio(flags);
   note(storageError);
   scheduleScene();
 
@@ -518,15 +537,36 @@ document.addEventListener('click', event=>{
       break;
     case 'close': dialog.close(); break;
     case 'reset': openOrganizer(true); break;
-    case 'resetConfirm': clearMemoryPhotos(false); state=G.fresh(); C.teams.forEach(t=>warmupPoses[t.id].fill(false)); warmupTeam=0; returnScreen='home'; presentation=false; go('home'); note(U.resetDone); break;
-    case 'gesture': state.teams[el.dataset.team].gesture=Number(el.dataset.index); save(); render(); break;
-    case 'warmupTeam': warmupTeam=Math.max(0,Math.min(2,Number(el.dataset.index))); render(); break;
-    case 'poseDone': {
-      const id=el.dataset.team, pose=Number(el.dataset.pose);
-      if(!warmupPoses[id] || !Number.isInteger(pose) || pose<0 || pose>2 || warmupPoses[id][pose]) break;
-      warmupPoses[id][pose]=true;
-      if(warmupPoses[id].every(Boolean)) {state.teams[id].gesture=0;save();}
-      render();
+    case 'resetConfirm': clearMemoryPhotos(false); state=G.fresh(); warmupTeam=0; returnScreen='home'; presentation=false; go('home'); note(U.resetDone); break;
+    case 'gesture': {
+      const id=C.teams[warmupTeam].id, progress=state.teams[id], pose=Number(el.dataset.index);
+      if(state.currentScreen!=='warmup' || el.dataset.team!==id || !progress.posesTried || (progress.gesture!==null && progress.poseChoice===null) || !Number.isInteger(pose) || pose<0 || pose>=3) break;
+      progress.poseChoice=pose;updateWarmup(false);
+      app.querySelector('[data-action="gesture"][data-index="'+pose+'"]')?.focus({preventScroll:true});
+      break;
+    }
+    case 'warmupTeam': {
+      const index=Number(el.dataset.index);
+      if(state.currentScreen!=='warmup' || !Number.isInteger(index) || index<0 || index>=C.teams.length || Math.abs(index-warmupTeam)!==1) break;
+      const progress=state.teams[C.teams[warmupTeam].id];
+      if(index>warmupTeam && (progress.gesture===null || progress.poseChoice!==null)) break;
+      warmupTeam=index;updateWarmup();break;
+    }
+    case 'posesTried':
+    case 'poseConfirm':
+    case 'poseChange': {
+      if(state.currentScreen!=='warmup') break;
+      const progress=state.teams[C.teams[warmupTeam].id];
+      if(el.dataset.action==='posesTried') progress.posesTried=true;
+      if(el.dataset.action==='poseConfirm') {
+        if(!progress.posesTried || progress.poseChoice===null) break;
+        progress.gesture=progress.poseChoice;progress.poseChoice=null;
+      }
+      if(el.dataset.action==='poseChange') {
+        if(progress.gesture===null) break;
+        progress.poseChoice=progress.gesture;
+      }
+      updateWarmup();
       break;
     }
     case 'mark': {

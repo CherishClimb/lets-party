@@ -284,14 +284,9 @@ window.CONTENT = {
     "saved": "Automatisch gespeichert",
     "saveFailed": "Speichern ist gerade nicht möglich. Bitte diese Seite geöffnet lassen.",
     "corruptSave": "Der gespeicherte Spielstand konnte nicht gelesen werden. Bitte prüfe die Teams.",
-    "finishPose": "Fertig",
-    "finished": "✓ Fertig",
-    "poseProgress": "{n} / 3 Posen",
-    "poseHint": "Macht die Pose gemeinsam. Danach tippt die Spielleitung auf Fertig.",
     "teamOf": "Team {n} von 3",
     "previousTeam": "Vorheriges Team",
     "nextTeam": "Nächstes Team",
-    "teamSpellDone": "Team-Zauber geschafft!",
     "warmupProgress": "Fortschritt der drei Rettungsteams",
     "rescueTeam": "RETTUNGSTEAM",
     "rescueTeams": "UNSERE RETTUNGSTEAMS",
@@ -339,8 +334,14 @@ window.CONTENT = {
     "text": "Findet euren Namen, euer Symbol und euer Team."
   },
   "warmup": {
-    "title": "Jedes Rettungsteam braucht einen Team-Zauber!",
-    "text": "Macht gemeinsam alle drei Posen."
+    "title": "Probiert eure 3 Team-Posen aus!",
+    "text": "Alle zusammen – macht jede Pose nach!",
+    "tried": "Wir haben alle ausprobiert ✨",
+    "choose": "Welche Pose wird eure Team-Pose?",
+    "confirm": "Diese Pose wählen ⭐",
+    "confirmed": "Das ist eure Team-Pose!",
+    "change": "Pose ändern",
+    "selected": "Ausgewählt"
   },
   "outside": [
     {
